@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tower Defense game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <h1>Tower Defense</h1>
+        <div id="stats-bar">
+            <div class="stat-card">
+                <div>Base Health</div>
+                <div id="health-display">0</div>
+            </div>
+            <div class="stat-card">
+                <div>Gold</div>
+                <div id="gold-display"></div>
+            </div>
+            <div id="stat-card">
+                <div>Wave</div>
+                <div id="wave-display"></div>
+            </div>
+        </div>
+        <div id="main-content">
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+            <div id="ui-panel">
+                <h2>Controls</h2>
+                <button id="build-turret-button">
+                    Build Turret (50 Gold)
+                </button>
+                <button id="start-wave-button">
+                    Start wave
+                </button>
+                <div id="message-box"></div>
+            </div>
+
+        </div>
+    </div>
+    <script src="script.js" defer></script>
+</body>
+</html>
