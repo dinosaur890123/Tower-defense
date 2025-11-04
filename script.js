@@ -171,6 +171,98 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateUI();
             }
         }
+        for (const tower of towers) {
+            tower.draw();
+            tower.attack();
+        }
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            const enemy = enemies[i];
+            enemy.move();
+            enemy.draw();
+
+            if (enemy.health <= 0) {
+                enemies.splice(i, 1);
+            }
+        }
+        if (buildingTower) {
+            drawTowerPreview();
+        }
+        
+        if (baseHealth <= 0) {
+            baseHealth = 0;
+            updateUI();
+            gameOver();
+            return;
+        }
+        requestAnimationFrame(gameLoop);
+    }
+    function drawMap() {
+        ctx.strokeStyle = '#40406cff';
+        ctx.lineWidth = 1;
+        for (let r = 0; r < MAP_ROWS; r++) {
+            for (let c = 0; c < MAP_COLS; c++) {
+                ctx.strokeRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
+        }
+        ctx.strokeStyle = '#7474f4ff';
+        ctx.lineWidth = TILE_SIZE;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(path[0].x * TILE_SIZE + TILE_SIZE / 2, path[0].y * TILE_SIZE + TILE_SIZE / 2);
+        for (let i = 1; i < path.length; i++) {
+            ctx.lineTo(path[i].x * TILE_SIZE + TILE_SIZE / 2, path[i].y * TILE_SIZE + TILE_SIZE / 2);
+        }
+        ctx.stroke();
+    }
+    function updateUI() {
+        baseHealthDisplay.textContent = baseHealth;
+        goldDisplay.textContent = gold;
+        waveDisplay.textContent = wave;
+    }
+    function toggleBuildMode() {
+        buildingTower = !buildingTower;
+        if (buildingTower) {
+            buildTurretButton.classList.add('selected');
+            showGlobalMessage("Click on a valid tile to build.");
+        } else {
+            buildTurretBtn.classList.remove('selected');
+            showGlobalMessage("");
+        }
+    }
+    let mousePos = {x:0, y:0};
+    canvas.addEventListener('mousemove', () => {
+        const rect = canvas.getBoundingClientRect();
+        mousePos.x = e.clientX - rect.left;
+        mousePos.y = e.clientY - rect.top;
+    });
+    function drawTowerPreview() {
+        const tileX = Math.floor(mousePos.x / TILE_SIZE);
+        const tileY = Math.floor(mousePos.y / TILE_SIZE);
+        const x = (tileX + 0.5) * TILE_SIZE;
+        const y = (tileY + 0.5) * TILE_SIZE;
+        const isValid = isValidPlacement(tileX, tileY);
+        ctx.fillStyle = isValid ? 'rgba(0, 255, 255, 0.5)' : 'rgba(255, 0, 0, 0.5)';
+        ctx.beginPath();
+        ctx.arc(x, y, TILE_SIZE / 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = isValid ? 'rgba(0, 255, 255, 0.5)' : 'rgba(255, 0, 0, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(x, y, TILE_SIZE * 3, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+    function isValidPlacement() {
+        if (tileX < 0 || tileX >= MAP_COLS || tileY < 0 || tileY >= MAP_ROWS) {
+            return false;
+        }
+        for (const p of path) {
+            if (p.x === tileX && p.y === tileY) return false;
+        }
+        for (const t of towers) {
+            if (Math.floor(t.x / TILE_SIZE) === tileX && Math.floor(t.y / TILE_SIZE) === tileY) return false;
+        }
+        return true;
     }
 
 })
