@@ -252,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.arc(x, y, TILE_SIZE * 3, 0, Math.PI * 2);
         ctx.stroke();
     }
-    function isValidPlacement() {
+    function isValidPlacement(tileX, tileY) {
         if (tileX < 0 || tileX >= MAP_COLS || tileY < 0 || tileY >= MAP_ROWS) {
             return false;
         }
@@ -264,5 +264,61 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return true;
     }
+    function placeTower(e) {
+        if (!buildingTower) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const tileX = Math.floor(x / TILE_SIZE);
+        const tileY = Math.floor(y / TILE_SIZE);
 
-})
+        if (isValidPlacement(tileX, tileY)) {
+            if (gold >= TURRET_COST) {
+                gold -= TURRET_COST;
+                towwers.push(new Turret(x, y));
+                updateUI();
+                toggleBuildMode();
+            } else {
+                showGlobalMessage("Not enough gold")
+            }
+        } else {
+            showGlobalMessage("Cannot build there");
+        }
+    }
+    function startWave() {
+        if (waveInprogress) return;
+        waveInProgress = true;
+        wave++;
+        waveEnemies = wave * 10;
+        waveSpawnTimer = 0;
+        updateUI();
+        startWaveButton.disabled = true;
+        startWaveButton.textContent = 'Wave in progress...';
+    }
+    letmessageTimer;
+    function showGlobalMessage(msg) {
+        messageBox.textContent = msg;
+        clearTimeout(messageTimer);
+        if (msg) {
+            messageTimer = setTimeout(() => {
+                messageBox.textContent = "";
+            }, 2000);
+        }
+    }
+    function gameOver() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'red';
+        ctx.font = '80px Calibri';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
+        startWaveButton.disabled = true;
+        buildTurretButton.disabled = true;
+    }
+    buildTurretButton.addEventListener('click', toggleBuildMode);
+    canvas.addEventListener('click', placeTower);
+    startWaveButton.addEventListener('click', startWave);
+    updateUI();
+    gameLoop();
+});
