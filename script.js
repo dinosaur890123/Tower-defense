@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function gameLoop() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         drawMap();
-        if (waveInprogress) {
+        if (waveInProgress) {
             if (waveEnemies > 0 && waveSpawnTimer <= 0) {
                 const health = 50 + wave * 10;
                 const speed = 1 + wave * 0.1;
