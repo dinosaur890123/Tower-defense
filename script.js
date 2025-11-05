@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.fireCooldown--;
                 return;
             }
-            this.findTarget;
+            this.findTarget();
             if (this.target) {
                 this.fireCooldown = this.fireRate;
                 this.target.takeDamage(this.damage);
@@ -238,69 +238,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         enemy.takeDamage(damageToDeal);
                     }
                 }
-            }
-        }
-    }
-    class Turret {
-        constructor(x, y) {
-            this.x = (Math.floor(x / TILE_SIZE) + 0.5) * TILE_SIZE;
-            this.y = (Math.floor(y / TILE_SIZE) + 0.5) * TILE_SIZE;
-            this.range = TILE_SIZE * 3;
-            this.damage = 10;
-            this.fireRate = 60;
-            this.fireCooldown = 0;
-            this.target = null;
-        }
-        findTarget() {
-            if (this.target && this.target.health > 0 && this.isInRange(this.target)) {
-                return;
-            }
-            this.target = null;
-            let closestDist = Infinity;
-            for (const enemy of enemies) {
-                const dist = this.getDistance(enemy);
-                if (dist < this.range && dist < closestDist) {
-                    closestDist = dist;
-                    this.target = enemy;
-                }
-            }
-        }
-        getDistance(enemy) {
-            const dx = this.x - enemy.x;
-            const dy = this.y - enemy.y;
-            return Math.sqrt(dx * dx + dy * dy);
-        }
-        isInRange(enemy) {
-            return this.getDistance(enemy) < this.range;
-        }
-        attack() {
-            if (this.fireCooldown > 0) {
-                this.fireCooldown--;
-                return;
-            }
-            this.findTarget();
-            if (this.target) {
-                this.fireCooldown = this.fireRate;
-                this.target.takeDamage(this.damage);
-                ctx.beginPath();
-                ctx.strokeStyle = 'cyan';
-                ctx.lineWidth = 2;
-                ctx.moveTo(this.x, this.y);
-                ctx.lineTo(this.target.x, this.target.y);
-                ctx.stroke();
-            }
-        }
-        draw() {
-            ctx.fillStyle = 'cyan';
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, TILE_SIZE / 3, 0, Math.PI * 2);
-            ctx.fill();
-            if (buildingTower || this.showRange) {
-                ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2);
-                ctx.stroke();
             }
         }
     }
