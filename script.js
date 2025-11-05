@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const buildTurretButton = document.getElementById('build-turret-button');
     const startWaveButton = document.getElementById('start-wave-button');
     const messageBox = document.getElementById('message-box');
+    const buildFrostButton = document.getElementById('build-frost-buuton');
+    const buildBombButton = document.getElementById('build-bomb-button');
+    const buildButtons = [buildTurretButton, buildFrostButton, buildBombButton];
     const TILE_SIZE = 40;
     const MAP_COLS = canvas.width / TILE_SIZE;
     const MAP_ROWS = canvas.height / TILE_SIZE;
@@ -49,8 +52,19 @@ document.addEventListener('DOMContentLoaded', () => {
             this.height = TILE_SIZE * 0.6;
             this.goldValue = 5;
             this.baseDamage = 10;
+            this.speedModifier = 1;
+            this.slowTimer = 0;
+        }
+        applySlow(duration) {
+            this.slowTimer = Math.max(this.slowTimer, duration);
         }
         move() {
+            if (this.slowTimer > 0) {
+                this.slowTimer--;
+                this.speedModifier = 0.5;
+            } else {
+                this.speedModifier = 1;
+            }
             if (this.pathIndex >= path.length - 1) {
                 baseHealth -= this.baseDamage;
                 this.health = 0;
@@ -73,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         draw() {
-            ctx.fillStyle = 'red';
+            ctx.fillStyle = this.slowTimer > 0 ? 'deepskyblue' : 'red';
             ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
             ctx.fillStyle = 'rgba(31, 29, 29, 1)';
             ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2 - 8, this.width, 5);
@@ -86,6 +100,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 gold += this.goldValue;
                 updateUI();
             }
+        }
+    }
+    class baseTower {
+        constructor(x, y) {
+            this.x = (Math.floor(x / TILE_SIZE) + 0.5) * TILE_SIZE;
+            this.y = (Math.floor(y / TILE_SIZE) + 0.5) * TILE_SIZE;
+            this.fireCooldown = 0;
+            this.target = null;
         }
     }
     class Turret {
