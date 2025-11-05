@@ -102,12 +102,141 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
-    class baseTower {
+    class BaseTower {
         constructor(x, y) {
             this.x = (Math.floor(x / TILE_SIZE) + 0.5) * TILE_SIZE;
             this.y = (Math.floor(y / TILE_SIZE) + 0.5) * TILE_SIZE;
             this.fireCooldown = 0;
             this.target = null;
+        }
+        getDistance(enemy) {
+            const dx = this.x - enemy.x;
+            const dy = this.y - enemy.y;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        isInRange(enemy) {
+            return this.getDistance(enemy) < this.range;
+        }
+        findTarget() {
+            if (this.target && this.target.health > 0 && this.isInRange(this.target)) {
+                return;
+            }
+            this.target = null;
+            let closestDist = Infinity;
+            for (const enemy of enemies) {
+                const dist = this.getDistance(enemy);
+                if (dist < this.range && dist < closestDist) {
+                    closestDist = dist;
+                    this.target = enemy;
+                }
+            }
+        }
+        drawRange() {
+            ctx.strokeStyle = this.rangeColor || 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        draw() {
+            ctx.fillStyle = this.color || 'grey';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, TILE_SIZE / 3, 0, Math.PI * 2);
+            ctx.fill();
+            if (buildingTower) {
+                this.drawRange();
+            }
+        }
+    }
+    class BasicTurret extends BaseTower {
+        constructor(x, y) {
+            super(x, y);
+            this.range = TILE_SIZE * 3;
+            this.damage = 10;
+            this.fireRate = 60;
+            this.color = 'cyan';
+            this.rangeColor = 'rgba(0, 255, 255, 0.3)';
+        }
+        attack() {
+            if (this.fireCooldown > 0) {
+                this.fireCooldown--;
+                return;
+            }
+            this.findTarget()
+            if (this.target) {
+                this.fireCooldown = this.fireRate;
+                this.target.takeDamage(this.damage);
+                ctx.beginPath();
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 2;
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.target.x, this.target.y);
+                ctx.stroke();
+            }
+        }
+    }
+    class FrostTurret extends BaseTower {
+        constructor(x, y) {
+            super(x, y);
+            this.range = TILE_SIZE * 2.5;
+            this.damage = 1;
+            this.fireRate = 90;
+            this.slowDuration = 120;
+            this.color = 'blue';
+            this.rangeColor = rgba(0, 0, 255, 0.3);
+        }
+        attack() {
+            if (this.fireCooldown > 0) {
+                this.fireCooldown--;
+                return;
+            }
+            this.findTarget;
+            if (this.target) {
+                this.fireCooldown = this.fireRate;
+                this.target.takeDamage(this.damage);
+                this.target.applySlow(this.slowDuration);
+                ctx.beginPath();
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 2;
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.target.x, this.target.y);
+                ctx.stroke();
+            }
+        }
+    }
+    class BombTurret extends BaseTower {
+        constructor(x, y) {
+            super(x, y);
+            this.range = TILE_SIZE * 4;
+            this.damage = 40;
+            this.fireRate = 180;
+            this.splashRadius = TILE_SIZE * 1.5;
+            this.color = 'orange';
+            this.rangeColor = 'rgba(255, 165, 0, 0.3)';
+        }
+        attack() {
+            if (this.fireCooldown > 0) {
+                this.fireCooldown--;
+                return;
+            }
+            this.findTarget();
+            if (this.target) {
+                this.fireCooldown = this.fireRate;
+                const targetEnemy = this.target;
+                ctx.fillStyle = 'rgba(255, 165, 0, 0.5)';
+                ctx.beginPath();
+                ctx.arc(targetEnemy.x, targetEnemy.y, this.splashRadius, 0, Math.PI * 2);
+                ctx.fill();
+                for (const enemy of enemies) {
+                    const dx = enemy.x - targetEnemy.x;
+                    const dy = enemy.y - targetEnemy.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < this.splashRadius) {
+                        const damageToDeal = (enemy === targetEnemy) ? this.damage :  this.damage * 0.5;
+                        enemy.takeDamage(damageToDeal);
+                    }
+                }
+            }
         }
     }
     class Turret {
@@ -297,13 +426,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const tileY = Math.floor(y / TILE_SIZE);
 
         if (isValidPlacement(tileX, tileY)) {
-            if (gold >= TURRET_COST) {
+            let towerPlaced = false;
+            if (buildingTower === 'basic' && gold >= TURRET_COST) {
                 gold -= TURRET_COST;
-                towers.push(new Turret(x, y));
+                towers.push(new BasicTurret(x, y));
+                towerPlaced = true;
+            } else if (buildingTower === 'frost' && gold >= FROST_COST) {
+                gold -= FROST_COST;
+                towers.push(new FrostTurret(x, y));   
+                towerPlaced = true;             
+            } else if (buildingTower === 'bomb' && gold >= BOMB_COST) {
+                gold -= BOMB_COST;
+                towers.push(new BombTurret(x, y));
+                towerPlaced = true;
+            } else if (towerPlaced === false) {
+                showGlobalMessage("Not enough gold!");
+                return;
+            }
+            if (towerPlaced) {
                 updateUI();
-                toggleBuildMode();
-            } else {
-                showGlobalMessage("Not enough gold")
+                toggleBuildMode(null);
             }
         } else {
             showGlobalMessage("Cannot build there");
@@ -341,6 +483,8 @@ document.addEventListener('DOMContentLoaded', () => {
         buildTurretButton.disabled = true;
     }
     buildTurretButton.addEventListener('click', toggleBuildMode);
+    buildFrostButton.addEventListener('click', () => toggleBuildMode('frost'));
+    buildBombButton.addEventListener('click', () => toggleBuildMode('bomb'));
     canvas.addEventListener('click', placeTower);
     startWaveButton.addEventListener('click', startWave);
     updateUI();
