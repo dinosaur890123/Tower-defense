@@ -1,0 +1,82 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #35354d;
+    color: #e0e0e0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+}
+h1, h2 {
+    text-align: center;
+}
+#game-container {
+    max-width: 1000px;
+}
+#stats-bar {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 20px;
+}
+.stat-card {
+    background-color: #292948;
+    border: 1px solid #54548e;
+    border-radius: 8px;
+    padding: 10px 20px;
+    text-align: center;
+    min-width: 120px;
+}
+.stat-card div:first-child {
+    font-size: 0.9rem;
+    color: #aba5a5;
+}
+.stat-card div:last-child {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+#main-content {
+    display: flex;
+    gap: 20px;
+}
+canvas {
+    background-color: #2a2a4e;
+    border: 2px solid #494971;
+    border-radius: 8px;
+}
+#ui-panel {
+    background-color: #242442;
+    border-radius: 8px;
+    padding: 20px;
+    width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+button {
+    background-color: #4a4a7e;
+    color: #ffffff;
+    border-radius: 8px;
+    padding: 10px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+    width: 100;
+}
+button:hover {
+    background-color: #5a5a9e;
+}
+button.selected {
+    background-color: #7a7aff;
+    box-shadow: 0 0 10px #7a7aff;
+}
+button:disabled {
+    background-color: #3e3e5e;
+    color: #757474;
+    cursor: not-allowed;
+}
+#message-box {
+    text-align: center;
+    color: #ffc107;
+    height: 20px;
+    font-size: 0.9rem;
+}
