@@ -312,14 +312,26 @@ document.addEventListener('DOMContentLoaded', () => {
         goldDisplay.textContent = gold;
         waveDisplay.textContent = wave;
     }
+    function getTowerStats() {
+        switch (towerType) {
+            case 'basic': return {range: TILE_SIZE * 3, color: 'rgba(0, 255, 255, 0.5)', cost: TURRET_COST};
+            case 'frost': return {range: TILE_SIZE * 2.5, color: 'rgba(0, 0, 255, 0.5)', cost: FROST_COST};
+            case 'bomb':  return {range: TILE_SIZE * 4, color: 'rgba(255, 165, 0, 0.5)', cost: BOMB_COST};
+            default: return null;
+        }
+    }
     function toggleBuildMode() {
+        buildButtons.forEach(button => button.classList.remove('selected'));
         buildingTower = !buildingTower;
         if (buildingTower) {
             buildTurretButton.classList.add('selected');
             showGlobalMessage("Click on a valid tile to build.");
         } else {
-            buildTurretButton.classList.remove('selected');
-            showGlobalMessage("");
+            buildingTower = towerType;
+            if (towerType === 'basic') buildTurretButton.classList.add('selected');
+            if (towerType === 'frost') buildFrostButton.classList.add('selected');
+            if (towerType === 'bomb') buildBombButton.classList.add('selected');
+            showGlobalMessage("Click on a valid tile to build.");
         }
     }
     let mousePos = {x:0, y:0};
