@@ -31,9 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let gold = 100;
     let wave = 0;
     let enemies = [];
-    let tower = [];
+    let towers = [];
     let buildingTower = false;
-    let waveInprogress = false;
+    let waveInProgress = false;
     let waveEnemies = 0;
     let waveSpawnTimer = 0;
     
@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.speed = speed;
             this.pathIndex = 0;
             this.width = TILE_SIZE * 0.6;
+            this.height = TILE_SIZE * 0.6;
             this.goldValue = 5;
             this.baseDamage = 10;
         }
@@ -65,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (distance < this.speed) {
                 this.pathIndex++;
                 this.x = targetX;
+                this.y = targetY;
             } else {
                 this.x += (dx / distance) * this.speed;
                 this.y += (dy / distance) * this.speed;
@@ -226,12 +228,12 @@ document.addEventListener('DOMContentLoaded', () => {
             buildTurretButton.classList.add('selected');
             showGlobalMessage("Click on a valid tile to build.");
         } else {
-            buildTurretBtn.classList.remove('selected');
+            buildTurretButton.classList.remove('selected');
             showGlobalMessage("");
         }
     }
     let mousePos = {x:0, y:0};
-    canvas.addEventListener('mousemove', () => {
+    canvas.addEventListener('mousemove', (e) => {
         const rect = canvas.getBoundingClientRect();
         mousePos.x = e.clientX - rect.left;
         mousePos.y = e.clientY - rect.top;
@@ -275,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isValidPlacement(tileX, tileY)) {
             if (gold >= TURRET_COST) {
                 gold -= TURRET_COST;
-                towwers.push(new Turret(x, y));
+                towers.push(new Turret(x, y));
                 updateUI();
                 toggleBuildMode();
             } else {
@@ -286,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     function startWave() {
-        if (waveInprogress) return;
+        if (waveInProgress) return;
         waveInProgress = true;
         wave++;
         waveEnemies = wave * 10;
@@ -295,7 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
         startWaveButton.disabled = true;
         startWaveButton.textContent = 'Wave in progress...';
     }
-    letmessageTimer;
+    let messageTimer;
     function showGlobalMessage(msg) {
         messageBox.textContent = msg;
         clearTimeout(messageTimer);
