@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.fireRate = 90;
             this.slowDuration = 120;
             this.color = 'blue';
-            this.rangeColor = rgba(0, 0, 255, 0.3);
+            this.rangeColor = 'rgba(0, 0, 255, 0.3)';
         }
         attack() {
             if (this.fireCooldown > 0) {
@@ -320,12 +320,12 @@ document.addEventListener('DOMContentLoaded', () => {
             default: return null;
         }
     }
-    function toggleBuildMode() {
+    function toggleBuildMode(towerType) {
         buildButtons.forEach(button => button.classList.remove('selected'));
-        buildingTower = !buildingTower;
-        if (buildingTower) {
-            buildTurretButton.classList.add('selected');
-            showGlobalMessage("Click on a valid tile to build.");
+
+        if (buildingTower === towerType) {
+            buildingTower = null;
+            showGlobalMessage("");
         } else {
             buildingTower = towerType;
             if (towerType === 'basic') buildTurretButton.classList.add('selected');
@@ -378,25 +378,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (isValidPlacement(tileX, tileY)) {
             let towerPlaced = false;
-            if (buildingTower === 'basic' && gold >= TURRET_COST) {
-                gold -= TURRET_COST;
-                towers.push(new BasicTurret(x, y));
-                towerPlaced = true;
-            } else if (buildingTower === 'frost' && gold >= FROST_COST) {
-                gold -= FROST_COST;
-                towers.push(new FrostTurret(x, y));   
-                towerPlaced = true;             
-            } else if (buildingTower === 'bomb' && gold >= BOMB_COST) {
-                gold -= BOMB_COST;
-                towers.push(new BombTurret(x, y));
-                towerPlaced = true;
-            } else if (towerPlaced === false) {
+            let cost = 0;
+            if (buildingTower === 'basic') cost = TURRET_COST;
+            else if (buildingTower === 'frost') cost = FROST_COST;
+            else if (buildingTower === 'bomb') cost = BOMB_COST;
+
+            if (gold >= cost) {
+                gold -= cost;
+                if (buildingTower === 'basic') {
+                    towers.push(new BasicTurret(x, y));
+                    towerPlaced = true;
+                } else if (buildingTower === 'frost') {
+                    towers.push(new FrostTurret(x, y));
+                    towerPlaced = true;
+                } else if (buildingTower === 'bomb') {
+                    towers.push(new BombTurret(x, y));
+                    towerPlaced = true;
+                }
+            } else {
                 showGlobalMessage("Not enough gold!");
-                return;
             }
+
             if (towerPlaced) {
                 updateUI();
-                toggleBuildMode(null);
+                buildingTower = null;
+                buildButtons.forEach(button => button.classList.remove('selected'));
+                showGlobalMessage("");
             }
         } else {
             showGlobalMessage("Cannot build there");
@@ -432,8 +439,10 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
         startWaveButton.disabled = true;
         buildTurretButton.disabled = true;
+        buildFrostButton.disabled = true;
+        buildBombButton.disabled = true;
     }
-    buildTurretButton.addEventListener('click', toggleBuildMode);
+    buildTurretButton.addEventListener('click', () => toggleBuildMode('basic'));
     buildFrostButton.addEventListener('click', () => toggleBuildMode('frost'));
     buildBombButton.addEventListener('click', () => toggleBuildMode('bomb'));
     canvas.addEventListener('click', placeTower);
