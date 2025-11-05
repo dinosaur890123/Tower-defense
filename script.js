@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const MAP_COLS = canvas.width / TILE_SIZE;
     const MAP_ROWS = canvas.height / TILE_SIZE;
     const TURRET_COST = 50;
+    const FROST_COST = 75;
+    const BOMB_COST = 120;
     const path = [
         {x: 0, y: 5},
         {x: 3, y: 5},
