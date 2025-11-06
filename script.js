@@ -32,6 +32,15 @@ document.addEventListener('DOMContentLoaded', () => {
         {x: 16, y: 12},
         {x: 19, y: 12}
     ];
+    const waveCompositions = [
+        [],
+        ['basic', 'basic', 'basic', 'basic', 'basic', 'basic', 'basic', 'basic'],
+        ['basic', 'basic', 'basic', 'basic', 'runner', 'basic', 'basic', 'runner', 'basic', 'basic'],
+        ['basic', 'runner', 'basic', 'runner', 'basic', 'runner', 'basic', 'runner', 'basic', 'runner'],
+        ['brute', 'basic', 'basic', 'basic', 'runner', 'runner', 'runner', 'brute', 'basic', 'basic'],
+        ['brute', 'brute', 'brute', 'runner', 'runner', 'runner', 'runner', 'runner', 'runner']
+        ['brute', 'brute', 'bomb', 'brute', 'brute', 'bomb', 'brute', 'brute'],
+    ];
     let baseHealth = 100;
     let gold = 100;
     let wave = 0;
@@ -79,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dx = targetX - this.x;
             const dy = targetY - this.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
+            const currentSpeed = this.speed * this.speedModifier;
             if (distance < this.speed) {
                 this.pathIndex++;
                 this.x = targetX;
@@ -102,6 +112,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 gold += this.goldValue;
                 updateUI();
             }
+        }
+    }
+    class RunnerEnemy extends Enemy {
+        constructor() {
+            super(75, 2.5, 3, 5, 'yellow', TILE_SIZE * 0.4); 
+        }
+    }
+    class BruteEnemy extends Enemy {
+        constructor() {
+            super(400, 0.8, 15, 25, '#ff6347', TILE_SIZE * 0.8);
         }
     }
     class BaseTower {
@@ -164,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.fireCooldown--;
                 return;
             }
-            this.findTarget()
+            this.findTarget();
             if (this.target) {
                 this.fireCooldown = this.fireRate;
                 this.target.takeDamage(this.damage);
@@ -245,11 +265,23 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         drawMap();
         if (waveInProgress) {
-            if (waveEnemies > 0 && waveSpawnTimer <= 0) {
-                const health = 50 + wave * 10;
-                const speed = 1 + wave * 0.1;
-                enemies.push(new Enemy(health, speed));
-                waveEnemies--;
+            if (enemiesToSpawn.length > 0 && waveSpawnTimer <= 0) {
+                const enemyType = enemiesToSpawn.shift();
+                let enemy;
+                switch (enemyType) {
+                    case 'runner':
+                        enemy = new RunnerEnemy();
+                        break;
+                    case 'brute':
+                        enemy = new BruteEnemy();
+                        break;
+                    case 'basic':
+                        const health = 50 + wave * 10;
+                        const speed = 1 + wave * 0.1;
+                        enemy = new Enemy(health, speed, 5, 10, 'red', TILE_SIZE * 0.6);
+                        break;
+                }
+                enemies.push(enemy);
                 waveSpawnTimer = 30;
             }
             if (waveSpawnTimer > 0) {
@@ -312,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
         goldDisplay.textContent = gold;
         waveDisplay.textContent = wave;
     }
-    function getTowerStats() {
+    function getTowerStats(towerType) {
         switch (towerType) {
             case 'basic': return {range: TILE_SIZE * 3, color: 'rgba(0, 255, 255, 0.5)', cost: TURRET_COST};
             case 'frost': return {range: TILE_SIZE * 2.5, color: 'rgba(0, 0, 255, 0.5)', cost: FROST_COST};
@@ -413,7 +445,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (waveInProgress) return;
         waveInProgress = true;
         wave++;
-        waveEnemies = wave * 10;
+        let composition = waveCompositions[wave];
+        if (!composition) {
+            composition = ['brute', 'brute', 'brute', 'brute', 'brute'];
+            for(let i=0; i < wave * 2; i++) {
+                composition.push('runner');
+            }
+        }
+        enemiesToSpawn = [...composition]; 
         waveSpawnTimer = 0;
         updateUI();
         startWaveButton.disabled = true;
