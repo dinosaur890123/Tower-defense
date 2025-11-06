@@ -287,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (waveSpawnTimer > 0) {
                 waveSpawnTimer--;
             }
-            if (waveEnemies === 0 && enemies.length === 0) {
+            if (enemiesToSpawn.length === 0 && enemies.length === 0) {
                 waveInProgress = false;
                 startWaveButton.disabled = false;
                 startWaveButton.textContent = 'Start next wave!';
