@@ -174,8 +174,8 @@ document.addEventListener('DOMContentLoaded', () => {
         constructor(x, y) {
             super(x, y);
             this.range = TILE_SIZE * 3;
-            this.damage = 15;
-            this.fireRate = 45;
+            this.damage = 20;
+            this.fireRate = 35;
             this.color = 'cyan';
             this.rangeColor = 'rgba(0, 255, 255, 0.3)';
         }
@@ -201,8 +201,8 @@ document.addEventListener('DOMContentLoaded', () => {
         constructor(x, y) {
             super(x, y);
             this.range = TILE_SIZE * 2.5;
-            this.damage = 2;
-            this.fireRate = 75;
+            this.damage = 3;
+            this.fireRate = 65;
             this.slowDuration = 120;
             this.color = 'blue';
             this.rangeColor = 'rgba(0, 0, 255, 0.3)';
@@ -230,8 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
         constructor(x, y) {
             super(x, y);
             this.range = TILE_SIZE * 4;
-            this.damage = 50;
-            this.fireRate = 150;
+            this.damage = 60;
+            this.fireRate = 100;
             this.splashRadius = TILE_SIZE * 1.5;
             this.color = 'orange';
             this.rangeColor = 'rgba(255, 165, 0, 0.3)';
