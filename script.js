@@ -48,11 +48,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let towers = [];
     let buildingTower = null;
     let waveInProgress = false;
-    let waveEnemies = 0;
+    let enemiesToSpawn = [];
     let waveSpawnTimer = 0;
     
     class Enemy {
-        constructor(health, speed) {
+        constructor(health, speed, goldValue = 5, baseDamage = 10, color = 'red', size = TILE_SIZE * 0.6) {
             this.x = path[0].x * TILE_SIZE + TILE_SIZE / 2;
             this.y = path[0].y * TILE_SIZE + TILE_SIZE / 2;
             this.health = health;
@@ -174,8 +174,8 @@ document.addEventListener('DOMContentLoaded', () => {
         constructor(x, y) {
             super(x, y);
             this.range = TILE_SIZE * 3;
-            this.damage = 10;
-            this.fireRate = 60;
+            this.damage = 15;
+            this.fireRate = 45;
             this.color = 'cyan';
             this.rangeColor = 'rgba(0, 255, 255, 0.3)';
         }
@@ -201,8 +201,8 @@ document.addEventListener('DOMContentLoaded', () => {
         constructor(x, y) {
             super(x, y);
             this.range = TILE_SIZE * 2.5;
-            this.damage = 1;
-            this.fireRate = 90;
+            this.damage = 2;
+            this.fireRate = 75;
             this.slowDuration = 120;
             this.color = 'blue';
             this.rangeColor = 'rgba(0, 0, 255, 0.3)';
@@ -230,8 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
         constructor(x, y) {
             super(x, y);
             this.range = TILE_SIZE * 4;
-            this.damage = 40;
-            this.fireRate = 180;
+            this.damage = 50;
+            this.fireRate = 150;
             this.splashRadius = TILE_SIZE * 1.5;
             this.color = 'orange';
             this.rangeColor = 'rgba(255, 165, 0, 0.3)';
@@ -373,6 +373,8 @@ document.addEventListener('DOMContentLoaded', () => {
         mousePos.y = e.clientY - rect.top;
     });
     function drawTowerPreview() {
+        const stats = getTowerStats(buildingTower);
+        if (!stats) return;
         const tileX = Math.floor(mousePos.x / TILE_SIZE);
         const tileY = Math.floor(mousePos.y / TILE_SIZE);
         const x = (tileX + 0.5) * TILE_SIZE;
@@ -452,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 composition.push('runner');
             }
         }
-        enemiesToSpawn = [...composition]; 
+        enemiesToSpawn = [...composition];
         waveSpawnTimer = 0;
         updateUI();
         startWaveButton.disabled = true;
