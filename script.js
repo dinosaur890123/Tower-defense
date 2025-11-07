@@ -588,12 +588,41 @@ document.addEventListener('DOMContentLoaded', () => {
             upgradeTowerButton.textContent = `Upgrade (${selectedTower.upgradeCost}G)`;
         }
     }
-    
+    function showBuildUI() {
+        selectedTower = null;
+        buildMenuContainer.classList.remove('hidden');
+        upgradeMenuContainer.classList.add('hidden');
+    }
+    function upgradeSelectedTower() {
+        if (!selectedTower) return;
+        if (gold >= selectedTower.upgradeCost) {
+            gold -= selectedTower.upgradeCost;
+            if (selectedTower.upgrade()) {
+                showGlobalMessage("Tower upgraded");
+            }
+            updateUI();
+            showUpgradeUI();
+        } else {
+            showGlobalMessage("Not enough gold to upgrade");
+        }
+    }
+    function sellSelectedTower() {
+        if (!selectedTower) return;
+        gold += selectedTower.getSellValue();
+        towers = towers.filter(t => t !== selectedTower);
+        showGlobalMessage("Tower Sold!");
+        updateUI();
+        showBuildUI();
+    }
     buildTurretButton.addEventListener('click', () => toggleBuildMode('basic'));
     buildFrostButton.addEventListener('click', () => toggleBuildMode('frost'));
     buildBombButton.addEventListener('click', () => toggleBuildMode('bomb'));
-    canvas.addEventListener('click', placeTower);
+    canvas.addEventListener('click', handleCanvasClick);
     startWaveButton.addEventListener('click', startWave);
+    upgradeTowerButton.addEventListener('click', upgradeSelectedTower);
+    sellTowerButton.addEventListener('click', sellSelectedTower);
+    deselectTowerButton.addEventListener('click', showBuildUI);
     updateUI();
+    showBuildUI();
     gameLoop();
 });

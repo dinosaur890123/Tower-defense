@@ -80,3 +80,25 @@ button:disabled {
     height: 20px;
     font-size: 0.9rem;
 }
+.hidden {
+    display: none;
+}
+.sell-btn {
+    background-color: #a04040;
+}
+.sell-btn:hover {
+    background-color: #c05050;
+}
+#upgrade-menu-container h3 {
+    text-align: center;
+    margin-bottom: 5px;
+    font-size: 1.1rem;
+}
+#tower-stats-display {
+    background-color: #2c2c56;
+    border-radius: 4px;
+    padding: 10px;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
