@@ -541,6 +541,54 @@ document.addEventListener('DOMContentLoaded', () => {
         buildFrostButton.disabled = true;
         buildBombButton.disabled = true;
     }
+    function handleCanvasClick(e) {
+        if (buildingTower) {
+            placeTower(e);
+        } else {
+            selectTowerAt(mousePos.x, mousePos.y);
+        }
+    }
+    function selectTowerAt(x, y) {
+        let towerClicked = null;
+        for (const tower of towers) {
+            const dx = tower.x - x;
+            const dy = tower.y - y;
+            if (Math.sqrt(dx*dx + dy*dy) < TILE_SIZE / 2) {
+                towerClicked = tower;
+                break;
+            }
+        }
+        if (towerClicked) {
+            selectedTower = towerClicked;
+            showUpgradeUI();
+        } else {
+            if (selectedTower) {
+                showBuildUI();
+            }
+        }
+    }
+    function showUpgradeUI() {
+        if (!selectedTower) return;
+        buildMenuContainer.classList.add('hidden');
+        upgradeMenuContainer.classList.remove('hidden');
+        let statsHTML = `
+        <strong>Type:</strong> ${selectedTower.constructor.name}<br>
+        <strong>Level:</strong> ${selectedTower.level} / ${selectedTower.maxLevel}<br>
+        <strong>Damage:</strong> ${selectedTower.damage || 'N/A'}<br>
+        <strong>Range:</strong> ${(selectedTower.range / TILE_SIZE).toFixed(1)} tiles<br>
+        <strong>Fire Rate:</strong> ${(60 / selectedTower.fireRate).toFixed(1)}/sec
+        `;
+        towerStatsDisplay.innerHTML = statsHTML;
+        sellTowerButton.textContent = `Sell (${selectedTower.getSellValue()}G)`;
+        if (selectedTower.level >= selectedTower.maxLevel) {
+            upgradeTowerButton.disabled = true;
+            upgradeTowerButton.textContent = 'Max Level';
+        } else {
+            upgradeTowerButton.disabled = false;
+            upgradeTowerButton.textContent = `Upgrade (${selectedTower.upgradeCost}G)`;
+        }
+    }
+    
     buildTurretButton.addEventListener('click', () => toggleBuildMode('basic'));
     buildFrostButton.addEventListener('click', () => toggleBuildMode('frost'));
     buildBombButton.addEventListener('click', () => toggleBuildMode('bomb'));
