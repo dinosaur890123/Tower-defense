@@ -13,6 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const messageBox = document.getElementById('message-box');
     const buildFrostButton = document.getElementById('build-frost-button');
     const buildBombButton = document.getElementById('build-bomb-button');
+    const buildMenuContainer = document.getElementById('build-menu-container');
+    const upgradeMenuContainer = document.getElementById('upgrade-menu-container');
+    const towerStatsDisplay = document.getElementById('tower-stats-display');
+    const towerStatsButton = document.getElementById('sell-tower-button');
+    const deselectTowerButton = document.getElementById('deselect-tower-button');
     const buildButtons = [buildTurretButton, buildFrostButton, buildBombButton];
     const TILE_SIZE = 40;
     const MAP_COLS = canvas.width / TILE_SIZE;
@@ -50,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let waveInProgress = false;
     let enemiesToSpawn = [];
     let waveSpawnTimer = 0;
+    let selectedTower = null;
     
     class Enemy {
         constructor(health, speed, goldValue = 5, baseDamage = 10, color = 'red', size = TILE_SIZE * 0.6) {
@@ -130,6 +136,10 @@ document.addEventListener('DOMContentLoaded', () => {
             this.y = (Math.floor(y / TILE_SIZE) + 0.5) * TILE_SIZE;
             this.fireCooldown = 0;
             this.target = null;
+            this.level = 1;
+            this.maxLevel = 3;
+            this.totalCost = 0;
+            this.upgradeCost = 0;
         }
         getDistance(enemy) {
             const dx = this.x - enemy.x;
@@ -163,11 +173,23 @@ document.addEventListener('DOMContentLoaded', () => {
         draw() {
             ctx.fillStyle = this.color || 'grey';
             ctx.beginPath();
-            ctx.arc(this.x, this.y, TILE_SIZE / 3, 0, Math.PI * 2);
+            ctx.arc(this.x, this.y, TILE_SIZE / 3 + (this.level * 1.5), 0, Math.PI * 2);
             ctx.fill();
-            if (buildingTower) {
+            ctx.fillStyle = 'white';
+            ctx.font = '12px Calibri';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(this.level, this.x, this.y);
+            if (selectedTower === this) {
                 this.drawRange();
             }
+        }
+        drawSelection() {
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, TILE_SIZE / 2 + 3, 0, Math.PI * 2);
+            ctx.stroke();
         }
     }
     class BasicTurret extends BaseTower {
@@ -178,6 +200,18 @@ document.addEventListener('DOMContentLoaded', () => {
             this.fireRate = 35;
             this.color = 'cyan';
             this.rangeColor = 'rgba(0, 255, 255, 0.3)';
+            this.totalCost = TURRET_COST;
+            this.upgradeCost = 80;
+        }
+        upgrade() {
+            if (this.level >= this.maxLevel) return false;
+            this.level++;
+            this.totalCost += this.upgradeCost;
+            this.damage = Math.floor(this.damage * 1.8);
+            this.range += TILE_SIZE * 0.25;
+            this.fireRate = Math.floor(thisfireRate * 0.85);
+            this.upgradeCost = Math.floor(this.upgradeCost * 2);
+            return true;
         }
         attack() {
             if (this.fireCooldown > 0) {
@@ -206,6 +240,18 @@ document.addEventListener('DOMContentLoaded', () => {
             this.slowDuration = 120;
             this.color = 'blue';
             this.rangeColor = 'rgba(0, 0, 255, 0.3)';
+            this.totalCost = FROST_COST;
+            this.upgradeCost = 100;
+        }
+        upgrade() {
+            if (this.level >= this.maxLevel) return false;
+            this.level++;
+            this.totalCost += this.upgradeCost;
+            this.damage += 2;
+            this.range += TILE_SIZE * 0.25;
+            this.slowDuration = Math.floor(this.slowDuration * 1.25);
+            this.upgradeCost = Math.floor(this.upgradeCost * 1.8);
+            return true;
         }
         attack() {
             if (this.fireCooldown > 0) {
@@ -235,6 +281,18 @@ document.addEventListener('DOMContentLoaded', () => {
             this.splashRadius = TILE_SIZE * 1.5;
             this.color = 'orange';
             this.rangeColor = 'rgba(255, 165, 0, 0.3)';
+            this.totalCost = BOMB_COST;
+            this.upgradeCost = 150;
+        }
+        upgrade() {
+            if (this.level >= this.maxLevel) return false;
+            this.level++;
+            this.totalCost += this.upgradeCost;
+            this.damage = Math.floor(this.damage * 1.5);
+            this.fireRate = Math.floor(this.fireRate * 0.9);
+            this.splashRadius += TILE_SIZE;
+            this.upgradeCost = Math.floor(this.upgradeCost * 2);
+            return true;
         }
         attack() {
             if (this.fireCooldown > 0) {
