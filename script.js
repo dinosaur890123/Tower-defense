@@ -18,6 +18,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const towerStatsDisplay = document.getElementById('tower-stats-display');
     const towerStatsButton = document.getElementById('sell-tower-button');
     const deselectTowerButton = document.getElementById('deselect-tower-button');
+    const meteorStrikeButton = document.getElementById('meteor-strike-button');
+    const globalFreezeButton = document.getElementById('global-freeze-button');
+    const meteorOverlay = meteorStrikeBtn.querySelector('.cooldown-overlay');
+    const meteorCooldownText = meteorStrikeBtn.querySelector('.cooldown-text');
+    const freezeOverlay = globalFreezeBtn.querySelector('.cooldown-overlay');
+    const freezeCooldownText = globalFreezeBtn.querySelector('.cooldown-text');
     const buildButtons = [buildTurretButton, buildFrostButton, buildBombButton];
     const TILE_SIZE = 40;
     const MAP_COLS = canvas.width / TILE_SIZE;
@@ -56,6 +62,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let enemiesToSpawn = [];
     let waveSpawnTimer = 0;
     let selectedTower = null;
+    let explosions = [];
+    let spellMode = null;
+    const SPELL_COSTS = {
+        meteor: {maxCooldown: 120 * 60, radius:  TILE_SIZE * 3, damage: 300},
+        freeze: {maxCooldown: 180 * 60, duration: 5 * 60}
+    };
+    let spells = {
+        meteor: {unlocked: false, cooldown: 0},
+        freeze: {unlocked: false, cooldown: 0}
+    };
     
     class Enemy {
         constructor(health, speed, goldValue = 5, baseDamage = 10, color = 'red', size = TILE_SIZE * 0.6) {
@@ -140,6 +156,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.maxLevel = 3;
             this.totalCost = 0;
             this.upgradeCost = 0;
+        }
+        getSellValue() {
+            return Math.floor(this.totalCost * 0.75);
         }
         getDistance(enemy) {
             const dx = this.x - enemy.x;
@@ -303,10 +322,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.target) {
                 this.fireCooldown = this.fireRate;
                 const targetEnemy = this.target;
-                ctx.fillStyle = 'rgba(255, 165, 0, 0.5)';
-                ctx.beginPath();
-                ctx.arc(targetEnemy.x, targetEnemy.y, this.splashRadius, 0, Math.PI * 2);
-                ctx.fill();
+                explosions.push({
+                    x: targetEnemy.x,
+                    y: targetEnemy.y,
+                    radius: this.splashRadius,
+                    timer: 10,
+                    color: 'rgba(255, 165, 0, 0.5)'
+                });
                 for (const enemy of enemies) {
                     const dx = enemy.x - targetEnemy.x;
                     const dy = enemy.y - targetEnemy.y;
@@ -351,24 +373,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 startWaveButton.textContent = 'Start next wave!';
                 gold += 50 + wave * 10;
                 updateUI();
+                if (wave === 3 && !spells.meteor.unlocked) {
+                    spells.meteor.unlocked = true;
+                    showGlobalMessage("Meteor strike unlocked!");
+                }
+                if (wave === 7 && !spells.freeze.unlocked) {
+                    spells.freeze.unlocked = true;
+                    showGlobalMessage("Global freeze unlocked!");
+                }
             }
         }
         for (const tower of towers) {
             tower.draw();
             tower.attack();
         }
+        if (selectedTower) {
+            selectedTower.drawSelection();
+        }
         for (let i = enemies.length - 1; i >= 0; i--) {
             const enemy = enemies[i];
             enemy.move();
             enemy.draw();
-
             if (enemy.health <= 0) {
                 enemies.splice(i, 1);
             }
         }
+        for (let i = explosions.length - 1; i >= 0; i--) {
+            const exp = explosions[i];
+            exp.timer--;
+            ctx.fillStyle = exp.color;
+            ctx.beginPath();
+            ctx.arc(exp.x, exp.y, exp.radius * (1 - exp.timer / 10), 0, Math.PI * 2);
+            ctx.fill();
+            if (exp.timer <= 0) {
+                explosions.splice(i, 1);
+            }
+        }
         if (buildingTower) {
+            if (selectedTower) {
+                showBuildUI();
+            }
             drawTowerPreview();
         }
+        if (spellMode === 'meteor') {
+            drawMeteorPreview();
+        }
+        updateSpells();
         
         if (baseHealth <= 0) {
             baseHealth = 0;
@@ -411,12 +461,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     function toggleBuildMode(towerType) {
+        cancelSpellMode();
         buildButtons.forEach(button => button.classList.remove('selected'));
 
         if (buildingTower === towerType) {
             buildingTower = null;
             showGlobalMessage("");
         } else {
+            if (selectedTower) {
+                showBuildUI();
+            }
             buildingTower = towerType;
             if (towerType === 'basic') buildTurretButton.classList.add('selected');
             if (towerType === 'frost') buildFrostButton.classList.add('selected');
@@ -503,6 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function startWave() {
         if (waveInProgress) return;
+        cancelSpellMode();
         waveInProgress = true;
         wave++;
         let composition = waveCompositions[wave];
@@ -540,8 +595,15 @@ document.addEventListener('DOMContentLoaded', () => {
         buildTurretButton.disabled = true;
         buildFrostButton.disabled = true;
         buildBombButton.disabled = true;
+        buildButtons.forEach(button => button.disabled = true);
+        meteorStrikeButton.disabled = true;
+        globalFreezeButton.disabled = true;
     }
     function handleCanvasClick(e) {
+        if (spellMode === 'meteor') {
+            castMeteor(mousePos.x, mousePos.y);
+            return;
+        }
         if (buildingTower) {
             placeTower(e);
         } else {
@@ -549,6 +611,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     function selectTowerAt(x, y) {
+        cancelSpellMode();
         let towerClicked = null;
         for (const tower of towers) {
             const dx = tower.x - x;
@@ -592,6 +655,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedTower = null;
         buildMenuContainer.classList.remove('hidden');
         upgradeMenuContainer.classList.add('hidden');
+        cancelSpellMode();
     }
     function upgradeSelectedTower() {
         if (!selectedTower) return;
@@ -614,6 +678,83 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUI();
         showBuildUI();
     }
+    function updateSpells() {
+        if (spells.meteor.unlocked) {
+            meteorStrikeButton.classList.remove('hidden');
+            if (spells.meteor.cooldown > 0) {
+                spells.meteor.cooldown--;
+                meteorStrikeButton.disabled = true;
+                meteorStrikeButton.classList.add('on-cooldown');
+                meteorOverlay.style.height = `${(spells.meteor.cooldown / SPELL_COSTS.meteor.maxCooldown) * 100}%`;
+                meteorCooldownText.textContent = `${Math.ceil(spells.meteor.cooldown / 60)}`;
+                meteorCooldownText.style.display = 'block';
+            } else {
+                meteorStrikeButton.disabled = false;
+                meteorStrikeButton.classList.remove('on-cooldown');
+                meteorOverlay.style.height = '0%';
+                meteorCooldownText.style.display = 'none';
+            }
+        }
+        if (spells.freeze.unlocked) {
+            globalFreezeButton.classList.remove('hidden')
+            if (spells.freeze.cooldown > 0) {
+                spells.freeze.cooldown--;
+                globalFreezeButton.disabled = true;
+                globalFreezeButton.classList.add('on-cooldown');
+                freezeOverlay.style.height = `${(spells.freeze.cooldown / SPELL_COSTS.freeze.maxCooldown) * 100}%`;
+                freezeCooldownText.textContent = `${Math.ceil(spells.freeze.cooldown / 60)}`;
+                freezeCooldownText.style.display = 'block';
+            } else {
+                globalFreezeButton.disabled = true;
+                globalFreezeButton.classList.remove('on-cooldown');
+                freezeOverlay.style.height = '0%';
+                freezeCooldownText.style.display = 'none';
+            }
+        }
+    }
+    function activateMeteor() {
+        if (spells.meteor.cooldown > 0) return;
+        spellMode = 'meteor';
+        canvas.classList.add('meteor-target');
+        if (selectedTower) showBuildUI();
+        if (buildingTower) toggleBuildMode(null);
+        showGlobalMessage("Click to target meteor strike");
+    }
+    function castMeteor(x, y) {
+        if (spellMode !== 'meteor') return;
+        spells.meteor.cooldown = SPELL_COSTS.meteor.maxCooldown;
+        explosions.push({
+            x: x,
+            y: y,
+            radius: SPELL_COSTS.meteor.radius,
+            timer: 20,
+            color: 'rgba(255, 80, 0, 0.7)'
+        });
+        for (const enemy of enemies) {
+            const dx = enemy.x - x;
+            const dy = enemy.y - y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < SPELL_COSTS.meteor.radius) {
+                enemy.takeDamage(SPELL_COSTS.meteor.damage);
+            }
+        }
+        cancelSpellMode();
+    }
+    function castGlobalFreeze() {
+        if (spells.freeze.cooldown > 0) return;
+        spells.freeze.cooldown = SPELL_COSTS.freeze.maxCooldown;
+        for (const enemy of enemies) {
+            enemy.applySlow(SPELL_COSTS.freeze.duration);
+        }
+        showGlobalMessage("Global freeze cast!");
+        cancelSpellMode();
+    }
+    function cancelSpellMode() {
+        spellMode = null;
+        canvas.classList.remove('meteor-target');
+        showGlobalMessage("");
+    }
+
     buildTurretButton.addEventListener('click', () => toggleBuildMode('basic'));
     buildFrostButton.addEventListener('click', () => toggleBuildMode('frost'));
     buildBombButton.addEventListener('click', () => toggleBuildMode('bomb'));
@@ -621,6 +762,8 @@ document.addEventListener('DOMContentLoaded', () => {
     startWaveButton.addEventListener('click', startWave);
     upgradeTowerButton.addEventListener('click', upgradeSelectedTower);
     sellTowerButton.addEventListener('click', sellSelectedTower);
+    meteorStrikeButton.addEventListener('click', activateMeteor);
+    globalFreezeButton.addEventListener('click', castGlobalFreeze);
     deselectTowerButton.addEventListener('click', showBuildUI);
     updateUI();
     showBuildUI();
