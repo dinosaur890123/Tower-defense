@@ -371,6 +371,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 waveInProgress = false;
                 startWaveButton.disabled = false;
                 startWaveButton.textContent = 'Start next wave!';
+                const interestEarned = Math.min(Math.floor(gold * INTEREST_RATE), MAX_INTEREST);
+                if (interestEarned > 0) {
+                    gold+= interestEarned;
+                    showGlobalMessage(`+${interestEarned}G Interest!`, 'interest');
+                }
                 gold += 50 + wave * 10;
                 updateUI();
                 if (wave === 3 && !spells.meteor.unlocked) {
