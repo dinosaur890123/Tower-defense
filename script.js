@@ -604,11 +604,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return true;
     }
     function placeTower(e) {
-        if (!buildingTower) return;
-        const x = (tileX + 0.5) * TILE_SIZE;
-        const y = (tileY + 0.5) * TILE_SIZE;
-        const tileX = Math.floor(mousePos.x / TILE_SIZE);
-        const tileY = Math.floor(mousePos.y / TILE_SIZE);
+	if (!buildingTower) return;
+	const tileX = Math.floor(mousePos.x / TILE_SIZE);
+	const tileY = Math.floor(mousePos.y / TILE_SIZE);
+	const x = (tileX + 0.5) * TILE_SIZE;
+	const y = (tileY + 0.5) * TILE_SIZE;
 
         if (isValidPlacement(tileX, tileY)) {
             let towerPlaced = false;
