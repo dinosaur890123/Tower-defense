@@ -743,10 +743,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     function showBuildUI() {
-        selectedTower = null;
-        buildMenuContainer.classList.remove('hidden');
-        upgradeMenuContainer.classList.add('hidden');
-        cancelSpellMode();
+    selectedTower = null;
+    if (buildMenuContainer) buildMenuContainer.classList.remove('hidden');
+    if (upgradeMenuContainer) upgradeMenuContainer.classList.add('hidden');
+    cancelSpellMode();
     }
     function upgradeSelectedTower() {
         if (!selectedTower) return;
