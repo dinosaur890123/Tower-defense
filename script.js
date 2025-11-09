@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ['basic', 'runner', 'basic', 'runner', 'basic', 'runner', 'basic', 'runner', 'basic', 'runner'],
         ['brute', 'basic', 'basic', 'basic', 'runner', 'runner', 'runner', 'brute', 'basic', 'basic'],
         ['brute', 'brute', 'brute', 'runner', 'runner', 'runner', 'runner', 'runner', 'runner']
-        ['brute', 'brute', 'bomb', 'brute', 'brute', 'bomb', 'brute', 'brute'],
+        ['brute', 'brute', 'bomb', 'brute', 'brute', 'brute', 'brute']
     ];
     let baseHealth = 100;
     let gold = 100;
@@ -65,6 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let waveSpawnTimer = 0;
     let selectedTower = null;
     let explosions = [];
+    let projectiles = [];
     let spellMode = null;
     const SPELL_COSTS = {
         meteor: {maxCooldown: 120 * 60, radius:  TILE_SIZE * 3, damage: 300},
@@ -146,6 +147,100 @@ document.addEventListener('DOMContentLoaded', () => {
     class BruteEnemy extends Enemy {
         constructor() {
             super(400, 0.8, 15, 25, '#ff6347', TILE_SIZE * 0.8);
+        }
+    }
+    class Projectile {
+        constructor(x, y, target, speed, damage, color, slowDuration = 0) {
+            this.x = x;
+            this.y = y;
+            this.target = target;
+            this.speed = speed;
+            this.damage = damage;
+            this.color = color;
+            this.slowDuration = slowDuration;
+            this.size = 5;
+        }
+        move() {
+            if (!this.target || this.target.health <= 0) {
+                return false;
+            }
+            const dx = this.target.x - this.x;
+            const dy = this.target.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < this.speed) {
+                this.target.takeDamage(this.damage);
+                if (this.slowDuration > 0) {
+                    this.target.applySlow(this.slowDuration);
+                }
+                return false;
+            } else {
+                this.x += (dx / dist) * this.damage;
+                this.y += (dy / dist) * this.speed;
+                return true;
+            }
+        }
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+    class BombProjectile {
+        constructor(x, y, target, speed, damage, splashRadius, color) {
+            this.x = x;
+            this.y = y;
+            this.target = target;
+            this.startX = x;
+            this.startY = y;
+            this.targetX = target.x;
+            this.targetY = target.y;
+            this.speed = speed;
+            this.damage = damage;
+            this.splashRadius = splashRadius;
+            this.color = color;
+            this.distTotal = Math.sqrt(Math.pow(this.targetX - this.x, 2) + Math.pow(this.targetY - this.y, 2));
+            this.distTraveled = 0;
+            this.angle = Math.atan2(this.targetY - this.y, this.targetX - this.x);
+        }
+        move() {
+            if (this.distTraveled >= this.distTotal) {
+                explosions.push({
+                    x: this.targetX,
+                    y: this.targetY,
+                    radius: this.splashRadius,
+                    timer: 10,
+                    color: 'rgba(255, 165, 0, 0.5)'
+                });
+                for (const enemy of enemies) {
+                    const dx= enemy.x - this.targetX;
+                    const dy = enemy.y - this.targetY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < this.splashRadius) {
+                        enemy.takeDamage(this.damage);
+                    }
+                }
+                return false;
+            }
+            this.x += Math.cos(this.angle) * this.speed;
+            this.y += Math.sin(this.angle) * this.speed;
+            this.distTraveled += this.speed;
+            return true;
+        }
+        draw() {
+            const halfDist = this.distTotal / 2;
+            const currentHeight = (this.distTraveled - halfDist) * (this.distTraveled - halfDist);
+            const maxHeight = halfDist * halfDist;
+            const arc = (maxHeight - currentHeight) / (maxHeight / 20);
+
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y - arc, TILE_SIZE / 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, TILE_SIZE / 5, 0, Math.PI * 2);
+            ctx.fill();
         }
     }
     class BaseTower {
@@ -230,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.totalCost += this.upgradeCost;
             this.damage = Math.floor(this.damage * 1.8);
             this.range += TILE_SIZE * 0.25;
-            this.fireRate = Math.floor(thisfireRate * 0.85);
+            this.fireRate = Math.floor(this.fireRate * 0.85);
             this.upgradeCost = Math.floor(this.upgradeCost * 2);
             return true;
         }
@@ -242,13 +337,10 @@ document.addEventListener('DOMContentLoaded', () => {
             this.findTarget();
             if (this.target) {
                 this.fireCooldown = this.fireRate;
-                this.target.takeDamage(this.damage);
-                ctx.beginPath();
-                ctx.strokeStyle = this.color;
-                ctx.lineWidth = 2;
-                ctx.moveTo(this.x, this.y);
-                ctx.lineTo(this.target.x, this.target.y);
-                ctx.stroke();
+                projectiles.push(new Projectile(
+                    this.x, this.y, this.target, 
+                    7, this.damage, this.color
+                ));
             }
         }
     }
@@ -282,14 +374,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.findTarget();
             if (this.target) {
                 this.fireCooldown = this.fireRate;
-                this.target.takeDamage(this.damage);
-                this.target.applySlow(this.slowDuration);
-                ctx.beginPath();
-                ctx.strokeStyle = this.color;
-                ctx.lineWidth = 2;
-                ctx.moveTo(this.x, this.y);
-                ctx.lineTo(this.target.x, this.target.y);
-                ctx.stroke();
+                projectiles.push(new Projectile(
+                    this.x, this.y, this.target, 6, this.damage, this.color, this.slowDuration
+                ));
             }
         }
     }
@@ -323,23 +410,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.findTarget();
             if (this.target) {
                 this.fireCooldown = this.fireRate;
-                const targetEnemy = this.target;
-                explosions.push({
-                    x: targetEnemy.x,
-                    y: targetEnemy.y,
-                    radius: this.splashRadius,
-                    timer: 10,
-                    color: 'rgba(255, 165, 0, 0.5)'
-                });
-                for (const enemy of enemies) {
-                    const dx = enemy.x - targetEnemy.x;
-                    const dy = enemy.y - targetEnemy.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < this.splashRadius) {
-                        const damageToDeal = (enemy === targetEnemy) ? this.damage :  this.damage * 0.5;
-                        enemy.takeDamage(damageToDeal);
-                    }
-                }
+                projectiles.push(new BombProjectile(
+                    this.x, this.y, this.target, 4, this.damage, this.splashRadius, this.color
+                ));
             }
         }
     }
@@ -396,6 +469,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (selectedTower) {
             selectedTower.drawSelection();
+        }
+        for (let i = projectiles.length - 1; i >= 0; i--) {
+            const p = projectiles[i];
+            p.draw();
+            if (!p.move()) {
+                projectiles.splice(i, 1);
+            }
         }
         for (let i = enemies.length - 1; i >= 0; i--) {
             const enemy = enemies[i];
@@ -524,8 +604,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function placeTower(e) {
         if (!buildingTower) return;
         const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const x = (tileX + 0.5) * TILE_SIZE;
+        const y = (tileY + 0.5) * TILE_SIZE;
         const tileX = Math.floor(x / TILE_SIZE);
         const tileY = Math.floor(y / TILE_SIZE);
 
@@ -581,13 +661,18 @@ document.addEventListener('DOMContentLoaded', () => {
         startWaveButton.textContent = 'Wave in progress...';
     }
     let messageTimer;
-    function showGlobalMessage(msg) {
+    function showGlobalMessage(msg, type = 'default') {
         messageBox.textContent = msg;
+        messageBox.classList.remove('interest-message');
+        if (type === 'interest') {
+            messageBox.classList.add('interest-message');
+        }
         clearTimeout(messageTimer);
         if (msg) {
             messageTimer = setTimeout(() => {
                 messageBox.textContent = "";
-            }, 2000);
+                messageBox.classList.remove('interest-message');
+            }, 3000);
         }
     }
     function gameOver() {
@@ -599,9 +684,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.textBaseline = 'middle';
         ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
         startWaveButton.disabled = true;
-        buildTurretButton.disabled = true;
-        buildFrostButton.disabled = true;
-        buildBombButton.disabled = true;
         buildButtons.forEach(button => button.disabled = true);
         meteorStrikeButton.disabled = true;
         globalFreezeButton.disabled = true;
@@ -712,7 +794,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 freezeCooldownText.textContent = `${Math.ceil(spells.freeze.cooldown / 60)}`;
                 freezeCooldownText.style.display = 'block';
             } else {
-                globalFreezeButton.disabled = true;
+                globalFreezeButton.disabled = false;
                 globalFreezeButton.classList.remove('on-cooldown');
                 freezeOverlay.style.height = '0%';
                 freezeCooldownText.style.display = 'none';
