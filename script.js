@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const towerStatsDisplay = document.getElementById('tower-stats-display');
     const towerStatsButton = document.getElementById('sell-tower-button');
     const upgradeTowerButton = document.getElementById('upgrade-tower-button')
+    const sellTowerButton = document.getElementById('sell-tower-button')
     const deselectTowerButton = document.getElementById('deselect-tower-button');
     const meteorStrikeButton = document.getElementById('meteor-strike-button');
     const globalFreezeButton = document.getElementById('global-freeze-button');
