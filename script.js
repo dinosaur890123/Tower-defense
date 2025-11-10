@@ -92,6 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.baseDamage = 10;
             this.speedModifier = 1;
             this.slowTimer = 0;
+            this.isFlying = false;
         }
         applySlow(duration) {
             this.slowTimer = Math.max(this.slowTimer, duration);
@@ -140,6 +141,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateUI();
             }
         }
+        applySlow(duration) {
+            this.slowTimer = Math.max(this.slowTimer, duration);
+        }
     }
     class RunnerEnemy extends Enemy {
         constructor() {
@@ -149,6 +153,60 @@ document.addEventListener('DOMContentLoaded', () => {
     class BruteEnemy extends Enemy {
         constructor() {
             super(400, 0.8, 15, 25, '#ff6347', TILE_SIZE * 0.8);
+        }
+    }
+    class DroneEnemy extends Enemy {
+        constructor() {
+            suuper(60, 1.2, 8, 10, '#a8a3a3ff');
+            this.isFlying = true;
+            this.propellerAngle = 0;
+        }
+        move() {
+            if (this.slowTimer > 0) {
+                this.speedModifier = 0.5;
+                this.slowTimer--;
+            } else {
+                this.speedModifier = 1;
+            }
+            const targetPoint = path[path.length - 1];
+            const targetX = targetPoint.x * TILE_SIZE + TILE_SIZE / 2;
+            const targetY = targetPoint.y * TILE_SIZE + TILE_SIZE / 2;
+            const dx = targetX - this.x;
+            const dy = targetY - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const currentSpeed = this.speed * this.speedModifier;
+            if (distance < currentSpeed) {
+                baseHealth -= this.baseDamage;
+                this.health = 0;
+                updateUI();
+                if (baseHealth <= 0) {
+                    gameOver();
+                }
+            } else {
+                this.x += (dx / distance) * currentSpeed;
+                this.y += (dy / distance) * currentSpeed;
+            }
+        }
+        draw() {
+            this.propellerAngle += 0.5;
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.propellerAngle);
+            ctx.fillStyle = '#797575ff';
+            ctx.fillRect(-this.width * 0.7, -2, this.width * 1.4, 4);
+            ctx.rotate(Math.PI / 2);
+            ctx.fillRect(-this.width * 0.7, -2, this.width * 1.4, 4);
+            ctx.restore();
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.width / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'black';
+            ctx.stroke();
+            ctx.fillStyle = 'black';
+            ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2 - 8, this.width, 5);
+            ctx.fillStyle = 'lime';
+            ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2 - 8, this.width * (this.health / this.maxHealth), 5);
         }
     }
     class Projectile {
@@ -215,6 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     color: 'rgba(255, 165, 0, 0.5)'
                 });
                 for (const enemy of enemies) {
+                    if (enemy.isFlying) continue;
                     const dx= enemy.x - this.targetX;
                     const dy = enemy.y - this.targetY;
                     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -274,10 +333,11 @@ document.addEventListener('DOMContentLoaded', () => {
             this.target = null;
             let closestDist = Infinity;
             for (const enemy of enemies) {
-                const dist = this.getDistance(enemy);
-                if (dist < this.range && dist < closestDist) {
-                    closestDist = dist;
+                if (!this.canHitFlying && enemy.isFlying) continue;
+                if (!this.canHitGround && !enemy.isFlying) continue;
+                if (this.isInRange(enemy)) {
                     this.target = enemy;
+                    return;
                 }
             }
         }
@@ -313,13 +373,11 @@ document.addEventListener('DOMContentLoaded', () => {
     class BasicTurret extends BaseTower {
         constructor(x, y) {
             super(x, y);
-            this.range = TILE_SIZE * 3;
-            this.damage = 20;
-            this.fireRate = 35;
-            this.color = 'cyan';
-            this.rangeColor = 'rgba(0, 255, 255, 0.3)';
-            this.totalCost = TURRET_COST;
-            this.upgradeCost = 80;
+            super(x, y, TILE_SIZE * 3, 30, 'cyan', TURRET_COST);
+            this.damage = 18;
+            this.fireRate = 25;
+            this.canHitFlying = true;
+            this.canHitGround = true;
         }
         upgrade() {
             if (this.level >= this.maxLevel) return false;
@@ -348,15 +406,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     class FrostTurret extends BaseTower {
         constructor(x, y) {
-            super(x, y);
-            this.range = TILE_SIZE * 2.5;
-            this.damage = 3;
-            this.fireRate = 65;
-            this.slowDuration = 120;
-            this.color = 'blue';
-            this.rangeColor = 'rgba(0, 0, 255, 0.3)';
-            this.totalCost = FROST_COST;
-            this.upgradeCost = 100;
+            super(x, y, TILE_SIZE * 2.5, 45, 'rgb(0, 150, 255)', FROST_COST);
+            this.damage = 5;
+            this.slowDuration = 60;
+            this.fireRate = 40;
+            this.canHitFlying = true;
+            this.canHitGround = true;
         }
         upgrade() {
             if (this.level >= this.maxLevel) return false;
@@ -384,15 +439,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     class BombTurret extends BaseTower {
         constructor(x, y) {
-            super(x, y);
-            this.range = TILE_SIZE * 4;
-            this.damage = 60;
-            this.fireRate = 100;
+            super(x, y, TILE_SIZE * 3.5, 90, 'rgb(30, 30, 30)', BOMB_COST);
+            this.damage = 50;
             this.splashRadius = TILE_SIZE * 1.5;
-            this.color = 'orange';
-            this.rangeColor = 'rgba(255, 165, 0, 0.3)';
-            this.totalCost = BOMB_COST;
-            this.upgradeCost = 150;
+            this.fireRate = 80;
+            this.canHitFlying = false;
+            this.canHitGround = true;
         }
         upgrade() {
             if (this.level >= this.maxLevel) return false;

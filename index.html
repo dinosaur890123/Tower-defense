@@ -9,7 +9,24 @@
 <body>
     <div id="game-container">
         <h1>Tower Defense</h1>
-        <div id="stats-bar">
+        <div id="map-selection-screen">
+            <h2>Select a map</h2>
+            <div id="map-selection-buttons">
+                <button id="map-easy-button" class="map-button">
+                    <strong>Green Valley (Easy)</strong>
+                    <small>A short, easy path. Starts with 120 Health & 120 gold.</small>
+                </button>
+                <button id="map-medium-button" class="map-button">
+                    <strong>S curve map (Medium)</strong>
+                    <small>The classic map. Starts with 100 Health & 100 gold.</small>
+                </button>
+                <button id="map-hard-button" class="map-button">
+                    <strong>Twisted Path (Hard)</strong>
+                    <small>A long, winding path. Starts with 80 Health & 80 gold.</small>
+                </button>
+            </div>
+        </div>
+        <div id="stats-bar" class="hidden">
             <div class="stat-card">
                 <div>Base Health</div>
                 <div id="base-health-display">0</div>
@@ -23,7 +40,7 @@
                 <div id="wave-display"></div>
             </div>
         </div>
-        <div id="main-content">
+        <div id="main-content" class="hidden">
             <canvas id="gameCanvas" width="800" height="600"></canvas>
             <div id="ui-panel">
                 <h2>Controls</h2>
