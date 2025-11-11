@@ -12,6 +12,37 @@ h1, h2 {
 #game-container {
     max-width: 1000px;
 }
+#map-selection-screen {
+    background-color: #2b2b49;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+}
+#map-selection-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+}
+.map-button {
+    background-color: #32325a;
+    border: 1px solid #4a4a7e;
+    text-align: left;
+    padding: 15px;
+}
+.map-button:hover {
+    background-color: #3a3a6e;
+    border-color: #7a7aff;
+}
+.map-button strong {
+    font-size: 1.2rem;
+    display: block;
+    margin-bottom: 5px;
+}
+.map-button small {
+    font-size: 0.9rem;
+    color: #c4bebe;
+}
 #stats-bar {
     display: flex;
     justify-content: space-around;
@@ -79,6 +110,10 @@ button:disabled {
     color: #ffc107;
     height: 20px;
     font-size: 0.9rem;
+}
+.interest-message {
+    color: #4CAF50;
+    font-weight: bold;
 }
 .hidden {
     display: none;

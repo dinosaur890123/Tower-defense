@@ -26,6 +26,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const meteorCooldownText = meteorStrikeButton.querySelector('.cooldown-text');
     const freezeOverlay = globalFreezeButton.querySelector('.cooldown-overlay');
     const freezeCooldownText = globalFreezeButton.querySelector('.cooldown-text');
+    const mapSelectionScreen = document.getElementById('map-selection-screen');
+    const mapEasyButton = document.getElementById('map-easy-button');
+    const mapMediumButton = document.getElementById('map-medium-button');
+    const mapHardButton = document.getElementById('map-hard-button');
+    const statsBar = document.getElementById('stats-bar');
+    const mainContent = document.getElementById('main-content');
     const buildButtons = [buildTurretButton, buildFrostButton, buildBombButton];
     const TILE_SIZE = 40;
     const MAP_COLS = canvas.width / TILE_SIZE;
@@ -35,6 +41,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const BOMB_COST = 120;
     const INTEREST_RATE = 0.10;
     const MAX_INTEREST = 50;
+    const maps = {
+        easy: {
+            path: [
+                {x: 0, y: 5}, {x: 4, y: 5}, {x: 4, y: 8}, {x: 8, y: 8}, {x: 8, y: 5}, {x: 12, y: 5}, {x: 12, y: 8}, {x: 16, y: 8}, {x: 16, y: 12}, {x: 19, y: 12}
+            ],
+            startHealth: 120,
+            startGold: 120
+        },
+        medium: {
+            path: [
+                {x: 0, y: 5}, {x: 3, y: 5}, {x: 3, y: 2}, {x: 7, y: 2}, {x: 7, y: 8}, {x: 12, y: 8}, {x: 12, y: 5}, {x: 16, y: 5}, {x: 16, y: 12}, {x: 19, y: 12}
+            ],
+            startHealth: 100,
+            startGold: 100
+        },
+        hard: {
+            path: [
+                {x: 0, y: 2}, {x: 17, y: 2}, {x: 17, y: 5}, {x: 2, y: 5}, {x: 2, y: 8}, {x: 17, y: 8}, {x: 17, y: 11}, {x: 0, y: 11}, {x: 0, y: 14}, {x: 19, y: 14}
+            ],
+            startHealth: 80,
+            startGold: 80
+        }
+    };
     const path = [
         {x: 0, y: 5},
         {x: 3, y: 5},
@@ -53,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ['basic', 'basic', 'basic', 'basic', 'runner', 'basic', 'basic', 'runner', 'basic', 'basic'],
         ['basic', 'runner', 'basic', 'runner', 'basic', 'runner', 'basic', 'runner', 'basic', 'runner'],
         ['brute', 'basic', 'basic', 'basic', 'runner', 'runner', 'runner', 'brute', 'basic', 'basic'],
-        ['brute', 'brute', 'brute', 'runner', 'runner', 'runner', 'runner', 'runner', 'runner']
+        ['brute', 'brute', 'brute', 'runner', 'runner', 'runner', 'runner', 'runner', 'runner'],
         ['brute', 'brute', 'bomb', 'brute', 'brute', 'brute', 'brute']
     ];
     let baseHealth = 100;
@@ -157,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     class DroneEnemy extends Enemy {
         constructor() {
-            suuper(60, 1.2, 8, 10, '#a8a3a3ff');
+            super(60, 1.2, 8, 10, '#a8a3a3ff');
             this.isFlying = true;
             this.propellerAngle = 0;
         }
@@ -234,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 return false;
             } else {
-                this.x += (dx / dist) * this.damage;
+                this.x += (dx / dist) * this.speed;
                 this.y += (dy / dist) * this.speed;
                 return true;
             }
@@ -896,7 +925,28 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.classList.remove('meteor-target');
         showGlobalMessage("");
     }
-
+    function initGame(difficulty) {
+        const mapData = maps[difficulty];
+        path = mapData.path;
+        baseHealth = mapData.startHealth;
+        gold = mapData.startGold;
+        wave = 0;
+        enemies = [];
+        towers = [];
+        projectiles = [];
+        explosions = [];
+        waveInProgress = false;
+        selectedTower = null;
+        buildingTower = null;
+        spellMode = null;
+        spells.meteor = {unlocked: false, cooldown: 0};
+        spells.freeze = {unlocked: false, cooldown: 0};
+        mapSelectionScreen.classList.add('hidden');
+        statsBar.classList.remove('hidden');
+        mainContent.classList.remove('hidden');
+        updateUI();
+        gameLoop();
+    }
     buildTurretButton.addEventListener('click', () => toggleBuildMode('basic'));
     buildFrostButton.addEventListener('click', () => toggleBuildMode('frost'));
     buildBombButton.addEventListener('click', () => toggleBuildMode('bomb'));
@@ -907,7 +957,6 @@ document.addEventListener('DOMContentLoaded', () => {
     meteorStrikeButton.addEventListener('click', activateMeteor);
     globalFreezeButton.addEventListener('click', castGlobalFreeze);
     deselectTowerButton.addEventListener('click', showBuildUI);
-    updateUI();
     showBuildUI();
-    gameLoop();
+    initGame(difficulty);
 });
