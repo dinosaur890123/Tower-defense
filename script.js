@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const messageBox = document.getElementById('message-box');
     const buildFrostButton = document.getElementById('build-frost-button');
     const buildBombButton = document.getElementById('build-bomb-button');
-    const buildMenuContainer = document.getElementById('build-menu-container');
+    const buildMenuContainer = document.getElementById('ui-panel');
     const upgradeMenuContainer = document.getElementById('upgrade-menu-container');
     const towerStatsDisplay = document.getElementById('tower-stats-display');
     const towerStatsButton = document.getElementById('sell-tower-button');
@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
             startGold: 80
         }
     };
-    const path = [
+    let path = [
         {x: 0, y: 5},
         {x: 3, y: 5},
         {x: 3, y: 2},
@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ['basic', 'runner', 'basic', 'runner', 'basic', 'runner', 'basic', 'runner', 'basic', 'runner'],
         ['brute', 'basic', 'basic', 'basic', 'runner', 'runner', 'runner', 'brute', 'basic', 'basic'],
         ['brute', 'brute', 'brute', 'runner', 'runner', 'runner', 'runner', 'runner', 'runner'],
-        ['brute', 'brute', 'bomb', 'brute', 'brute', 'brute', 'brute']
+        ['brute', 'brute', 'drone', 'brute', 'brute', 'brute', 'brute']
     ];
     let baseHealth = 100;
     let gold = 100;
@@ -115,10 +115,11 @@ document.addEventListener('DOMContentLoaded', () => {
             this.maxHealth = health;
             this.speed = speed;
             this.pathIndex = 0;
-            this.width = TILE_SIZE * 0.6;
-            this.height = TILE_SIZE * 0.6;
-            this.goldValue = 5;
-            this.baseDamage = 10;
+            this.width = size;
+            this.height = size;
+            this.baseDamage = baseDamage;
+            this.goldValue = goldValue;
+            this.color = color;
             this.speedModifier = 1;
             this.slowTimer = 0;
             this.isFlying = false;
@@ -146,13 +147,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const dy = targetY - this.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             const currentSpeed = this.speed * this.speedModifier;
-            if (distance < this.speed) {
+            if (distance < currentSpeed) {
                 this.pathIndex++;
                 this.x = targetX;
                 this.y = targetY;
             } else {
-                this.x += (dx / distance) * this.speed;
-                this.y += (dy / distance) * this.speed;
+                this.x += (dx / distance) * currentSpeed;
+                this.y += (dy / distance) * currentSpeed;
             }
         }
         draw() {
@@ -169,9 +170,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 gold += this.goldValue;
                 updateUI();
             }
-        }
-        applySlow(duration) {
-            this.slowTimer = Math.max(this.slowTimer, duration);
         }
     }
     class RunnerEnemy extends Enemy {
@@ -236,6 +234,83 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2 - 8, this.width, 5);
             ctx.fillStyle = 'lime';
             ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2 - 8, this.width * (this.health / this.maxHealth), 5);
+        }
+    }
+    class ShieldedEnemy extends Enemy {
+        constructor(wave) {
+            const baseHP = 140 + wave * 20;
+            super(baseHP, 0.9 + wave * 0.03, 8, 12, '#7b8ba3', TILE_SIZE * 0.65);
+            this.armor = 6 + Math.floor(wave * 0.3);
+        }
+        takeDamage(amount) {
+            const effective = Math.max(1, amount - this.armor);
+            super.takeDamage(effective);
+        }
+    }
+    class RegenEnemy extends Enemy {
+        constructor(wave) {
+            const baseHP = 110 + wave * 18;
+            super(baseHP, 1.1 + wave * 0.04, 7, 10, '#3fa36b', TILE_SIZE * 0.6);
+            this.regen = 0.25 + wave * 0.02;
+        }
+        move() {
+            super.move();
+            if (this.health > 0 && this.health < this.maxHealth) {
+                this.health = Math.min(this.maxHealth, this.health + this.regen);
+            }
+        }
+    }
+    class SwarmEnemy extends Enemy {
+        constructor(wave) {
+            const baseHP = 24 + Math.floor(wave * 2);
+            super(baseHP, 2.2 + wave * 0.06, 1, 4, '#cbcb39ff', TILE_SIZE * 0.35);
+        }
+    }
+    class BossEnemy extends Enemy {
+        constructor(wave) {
+            const hp = 2500 + wave * 220;
+            super(hp, 0.65 + wave * 0.02, 100, 60, '#b43434', TILE_SIZE);
+            this.isBoss = true;
+            this.spawnPhase = 0;
+        }
+        move() {
+            super.move();
+            if (this.health <= 0) return;
+            const pct = this.health / this.maxHealth;
+            if (this.spawnPhase === 0 && pct <= 0.66) {
+                this.spawnAdds();
+                this.spawnPhase = 1;
+            } else if (this.spawnPhase === 1 && pct <= 0.33) {
+                this.spawnAdds(true);
+                this.spawnPhase = 2; 
+            }
+        }
+        spawnAdds(harder = false) {
+            const adds = [];
+            if (harder) {
+                adds.push(new BruteEnemy(), new ShieldedEnemy(wave), new DroneEnemy());
+            } else {
+                adds.push(new RunnerEnemy(), new RunnerEnemy(), new RegenEnemy(wave));
+            }
+            for (const a of adds) {
+                a.x = this.x + (Math.random() * 40 - 20);
+                a.y = this.y + (Math.random() * 40 - 20);
+                enemies.push(a);
+            }
+            explosions.push({x: this.x, y: this.y, radius: TILE_SIZE * 1.2, timer: 10, color: 'rgba(255, 120, 80, 0.6)'});
+        }
+        draw() {
+            ctx.fillStyle = this.slowTimer > 0 ? '#cf5a5a' : this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.width / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#3a2222';
+            ctx.stroke();
+            ctx.fillStyle = 'black';
+            ctx.fillRect(this.x - this.width / 1.2, this.y - this.height / 2 - 12, this.width * 1.2, 7);
+            ctx.fillStyle = '#efbe2cff';
+            ctx.fillRect(this.x - this.width / 1.2, this.y - this.height / 2 - 12, (this.width * 1.2) * (this.health / this.maxHealth), 7);
         }
     }
     class Projectile {
@@ -334,15 +409,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     class BaseTower {
-        constructor(x, y) {
+        constructor(x, y, opts = {}) {
             this.x = (Math.floor(x / TILE_SIZE) + 0.5) * TILE_SIZE;
             this.y = (Math.floor(y / TILE_SIZE) + 0.5) * TILE_SIZE;
             this.fireCooldown = 0;
             this.target = null;
             this.level = 1;
             this.maxLevel = 3;
-            this.totalCost = 0;
-            this.upgradeCost = 0;
+            this.range = opts.range ?? TILE_SIZE * 3;
+            this.color = opts.color ?? 'grey';
+            this.upgradeCost = opts.upgradeCost ?? 100;
+            this.totalCost = opts.initialCost ?? 0;
+            this.canHitFlying = opts.canHitFlying ?? true;
+            this.canHitGround = opts.canHitGround ?? true;
+            this.rangeColor = opts.rangeColor;
         }
         getSellValue() {
             return Math.floor(this.totalCost * 0.75);
@@ -401,12 +481,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     class BasicTurret extends BaseTower {
         constructor(x, y) {
-            super(x, y);
-            super(x, y, TILE_SIZE * 3, 30, 'cyan', TURRET_COST);
+            super(x, y, {
+                range: TILE_SIZE * 3,
+                color: 'cyan',
+                upgradeCost: 100,
+                initialCost: TURRET_COST,
+                canHitFlying: true,
+                canHitGround: true
+            });
             this.damage = 18;
             this.fireRate = 25;
-            this.canHitFlying = true;
-            this.canHitGround = true;
         }
         upgrade() {
             if (this.level >= this.maxLevel) return false;
@@ -435,12 +519,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     class FrostTurret extends BaseTower {
         constructor(x, y) {
-            super(x, y, TILE_SIZE * 2.5, 45, 'rgb(0, 150, 255)', FROST_COST);
+            super(x, y, {
+                range: TILE_SIZE * 2.5,
+                color: 'rgb(0, 150, 255)',
+                upgradeCost: 110,
+                initialCost: FROST_COST,
+                canHitFlying: true,
+                canHitGround: true
+            });
             this.damage = 5;
             this.slowDuration = 60;
             this.fireRate = 40;
-            this.canHitFlying = true;
-            this.canHitGround = true;
         }
         upgrade() {
             if (this.level >= this.maxLevel) return false;
@@ -468,12 +557,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     class BombTurret extends BaseTower {
         constructor(x, y) {
-            super(x, y, TILE_SIZE * 3.5, 90, 'rgb(30, 30, 30)', BOMB_COST);
+            super(x, y, {
+                range: TILE_SIZE * 3.5,
+                color: 'rgb(30, 30, 30)',
+                upgradeCost: 150,
+                initialCost: BOMB_COST,
+                canHitFlying: false,
+                canHitGround: true
+            });
             this.damage = 50;
             this.splashRadius = TILE_SIZE * 1.5;
             this.fireRate = 80;
-            this.canHitFlying = false;
-            this.canHitGround = true;
         }
         upgrade() {
             if (this.level >= this.maxLevel) return false;
@@ -513,13 +607,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     case 'brute':
                         enemy = new BruteEnemy();
                         break;
+                    case 'drone':
+                        enemy = new DroneEnemy();
+                        break;
+                    case 'regen':
+                        enemy = new RegenEnemy(wave);
+                        break;
+                    case 'swarm':
+                        enemy = new SwarmEnemy(wave);
+                        break;
+                    case 'boss':
+                        enemy = new BossEnemy(wave);
+                        break;
                     case 'basic':
                         const health = 50 + wave * 10;
                         const speed = 1 + wave * 0.1;
                         enemy = new Enemy(health, speed, 5, 10, 'red', TILE_SIZE * 0.6);
                         break;
                 }
-                enemies.push(enemy);
+                if (enemy) enemies.push(enemy);
                 waveSpawnTimer = 30;
             }
             if (waveSpawnTimer > 0) {
@@ -598,6 +704,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         requestAnimationFrame(gameLoop);
     }
+    function drawMeteorPreview() {
+        const r = SPELL_COSTS.meteor.radius;
+        ctx.strokeStyle = 'rgba(255, 120, 80, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(mousePos.x, mousePos.y, r, 0, Math.PI * 2);
+        ctx.stroke();
+    }
     function drawMap() {
         ctx.strokeStyle = '#40406cff';
         ctx.lineWidth = 1;
@@ -622,11 +736,35 @@ document.addEventListener('DOMContentLoaded', () => {
         goldDisplay.textContent = gold;
         waveDisplay.textContent = wave;
     }
+    function getWaveComposition(w) {
+        if (w % 5 === 0) {
+            for (let i = 0; i < 4 + Math.floor(w * 0.2); i++) comp.push('basic');
+            if (w >= 6) comp.push('shield', 'regen');
+            if (w >= 8) comp.push('drone');
+            comp.push('boss');
+            return comp;
+        }
+        if (waveCompositions[w]) return [...waveCompositions[w]];
+        const comp = [];
+        const basics = 8 + Math.floor(w * 0.6);
+        for (let i = 0; i < basics; i++) comp.push('basic');
+        if (w >= 3) for (let i = 0; i < 2 + Math.floor(w * 0.3); i++) comp.push('runner');
+        if (w >= 4) for (let i = 0; i < 1 + Math.floor(w * 0.25); i++) comp.push('brute');
+        if (w >= 5) for (let i = 0; i < 1 + Math.floor(w * 0.2); i++) comp.push('drone');
+        if (w >= 6) for (let i = 0; i < 1 + Math.floor(w * 0.2); i++) comp.push('shield');
+        if (w >= 8) for (let i = 0; i < 1 + Math.floor(w * 0.15); i++) comp.push('regen');
+        if (w >= 10) for (let i = 0; i < 3 + Math.floor(w * 0.4); i++) comp.push('swarm');
+        for (let i = comp.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [comp[i], comp[j]] = [comp[j], comp[i]];
+        }
+        return comp;
+    }
     function getTowerStats(towerType) {
         switch (towerType) {
             case 'basic': return {range: TILE_SIZE * 3, color: 'rgba(0, 255, 255, 0.5)', cost: TURRET_COST};
             case 'frost': return {range: TILE_SIZE * 2.5, color: 'rgba(0, 0, 255, 0.5)', cost: FROST_COST};
-            case 'bomb':  return {range: TILE_SIZE * 4, color: 'rgba(255, 165, 0, 0.5)', cost: BOMB_COST};
+            case 'bomb':  return {range: TILE_SIZE * 3.5, color: 'rgba(255, 165, 0, 0.5)', cost: BOMB_COST};
             default: return null;
         }
     }
@@ -669,7 +807,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.strokeStyle = isValid ? 'rgba(0, 255, 255, 0.5)' : 'rgba(255, 0, 0, 0.5)';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc(x, y, TILE_SIZE * 3, 0, Math.PI * 2);
+        ctx.arc(x, y, stats.range, 0, Math.PI * 2);
         ctx.stroke();
     }
     function isValidPlacement(tileX, tileY) {
@@ -729,14 +867,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelSpellMode();
         waveInProgress = true;
         wave++;
-        let composition = waveCompositions[wave];
-        if (!composition) {
-            composition = ['brute', 'brute', 'brute', 'brute', 'brute'];
-            for(let i=0; i < wave * 2; i++) {
-                composition.push('runner');
-            }
-        }
-        enemiesToSpawn = [...composition];
+        enemiesToSpawn = getWaveComposition(wave);
         waveSpawnTimer = 0;
         updateUI();
         startWaveButton.disabled = true;
@@ -957,6 +1088,8 @@ document.addEventListener('DOMContentLoaded', () => {
     meteorStrikeButton.addEventListener('click', activateMeteor);
     globalFreezeButton.addEventListener('click', castGlobalFreeze);
     deselectTowerButton.addEventListener('click', showBuildUI);
+    mapEasyButton.addEventListener('click', () => initGame('easy'));
+    mapMediumButton.addEventListener('click', () => initGame('medium'));
+    mapHardButton.addEventListener('click', () => initGame('hard'));
     showBuildUI();
-    initGame(difficulty);
 });
