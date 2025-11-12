@@ -37,6 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const targetStrongestButton = document.getElementById('target-strongest-button')
     const targetWeakestButton = document.getElementById('target-weakest-button');
     const targetFastestButton = document.getElementById('target-fastest-button');
+    const buildMineButton = document.getElementById('build-mine-button');
+    const endlessToggle = document.getElementById('endless-toggle');
     const targetButtons = {
         first: targetFirstButton,
         last: targetLastButton,
@@ -52,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const TURRET_COST = 50;
     const FROST_COST = 75;
     const BOMB_COST = 120;
+    const MINE_COST = 200;
     const INTEREST_RATE = 0.10;
     const MAX_INTEREST = 50;
     const maps = {
@@ -111,6 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let explosions = [];
     let projectiles = [];
     let spellMode = null;
+    let endlessMode = false;
     const SPELL_COSTS = {
         meteor: {maxCooldown: 120 * 60, radius:  TILE_SIZE * 3, damage: 300},
         freeze: {maxCooldown: 180 * 60, duration: 5 * 60}
@@ -668,6 +672,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         break;
                     case 'boss':
                         enemy = new BossEnemy(wave);
+                        break;
+                    case 'shield':
+                        enemy = new ShieldedEnemy(wave);
                         break;
                     case 'basic':
                         const health = 50 + wave * 10;
