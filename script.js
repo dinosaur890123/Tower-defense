@@ -32,6 +32,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const mapHardButton = document.getElementById('map-hard-button');
     const statsBar = document.getElementById('stats-bar');
     const mainContent = document.getElementById('main-content');
+    const targetFirstButton = document.getElementById('target-first-button');
+    const targetLastButton = document.getElementById('target-last-button');
+    const targetClosestButton = document.getElementById('target-last-button');
+    const targetStrongestButton = document.getElementById('target-strongest-button')
+    const targetWeakestButton = document.getElementById('target-weakest-button');
+    const targetFastestButton = document.getElementById('target-fastest-button');
+    const targetButtons = {
+        first: targetFirstButton,
+        last: targetLastButton,
+        closest: targetClosestButton,
+        strongest: targetStrongestButton,
+        weakest: targetWeakestButton,
+        fastest: targetFastestButton,
+    };
     const buildButtons = [buildTurretButton, buildFrostButton, buildBombButton];
     const TILE_SIZE = 40;
     const MAP_COLS = canvas.width / TILE_SIZE;
@@ -423,6 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.canHitFlying = opts.canHitFlying ?? true;
             this.canHitGround = opts.canHitGround ?? true;
             this.rangeColor = opts.rangeColor;
+            this.targeting = 'first';
         }
         getSellValue() {
             return Math.floor(this.totalCost * 0.75);
@@ -435,20 +450,56 @@ document.addEventListener('DOMContentLoaded', () => {
         isInRange(enemy) {
             return this.getDistance(enemy) < this.range;
         }
+        canHit(enemy) {
+            if (enemy.isFlying && !this.canHitFlying) return false;
+            if (!enemy.isFlying && !this.canHitGround) return false;
+            return true;
+        }
         findTarget() {
-            if (this.target && this.target.health > 0 && this.isInRange(this.target)) {
+            if (this.target && this.target.health > 0 && this.isInRange(this.target) && this.canHit(this.target)) {
                 return;
             }
-            this.target = null;
-            let closestDist = Infinity;
+            const endPoint = path[path.length - 1];
+            const endX = endPoint.x * TILE_SIZE + TILE_SIZE / 2;
+            const endY = endPoint.y * TILE_SIZE + TILE_SIZE / 2;
+            const distToEnd = (e) => Math.hypot(endX - e.x, endY - e.y);
+            const distToTower = (e) => Math.hypot(this.x - e.x, this.y - e.y);
+            const candidates = [];
             for (const enemy of enemies) {
-                if (!this.canHitFlying && enemy.isFlying) continue;
-                if (!this.canHitGround && !enemy.isFlying) continue;
-                if (this.isInRange(enemy)) {
-                    this.target = enemy;
-                    return;
-                }
+                if (enemy.health <= 0) continue;
+                if (!this.canHit(enemy)) continue;
+                if (!this.isInRange(enemy)) continue;
+                candidates.push(enemy);
             }
+            if (candidates.length === 0) {
+                this.target = null;
+                return;
+            }
+            let comparator;
+            switch (this.targeting) {
+                case 'first':
+                    comparator = (a, b) => distToEnd(a) - distToEnd(b);
+                    break;
+                case 'last':
+                    comparator = (a, b) => distToEnd(b) - distToEnd(a);
+                    break;
+                case 'closest':
+                    comparator = (a, b) => distToTower(a) - distToTower(b);
+                    break;
+                case 'strongest':
+                    comparator = (a, b) => b.health - a.health || distToTower(a) - distToTower(b);
+                    break;
+                case 'weakest':
+                    comparator = (a, b) => a.health - b.health || distToTower(a) - distToTower(b);
+                    break;
+                case 'fastest':
+                    comparator = (a, b) => b.speed - a.speed || distToTower(a) - distToTower(b);
+                    break;
+                default:
+                    comparator = (a, b) => distToEnd(a) - distToEnd(b);
+            }
+            candidates.sort(comparator);
+            this.target = candidates[0] || null;
         }
         drawRange() {
             ctx.strokeStyle = this.rangeColor || 'rgba(255, 255, 255, 0.3)';
@@ -942,6 +993,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <strong>Damage:</strong> ${selectedTower.damage || 'N/A'}<br>
         <strong>Range:</strong> ${(selectedTower.range / TILE_SIZE).toFixed(1)} tiles<br>
         <strong>Fire Rate:</strong> ${(60 / selectedTower.fireRate).toFixed(1)}/sec
+        <strong>Targeting:</strong>  ${selectedTower.targeting.charAt(0).toUpperCase() + selectedTower.targeting.slide(1)}
         `;
         towerStatsDisplay.innerHTML = statsHTML;
         sellTowerButton.textContent = `Sell (${selectedTower.getSellValue()}G)`;
@@ -952,6 +1004,19 @@ document.addEventListener('DOMContentLoaded', () => {
             upgradeTowerButton.disabled = false;
             upgradeTowerButton.textContent = `Upgrade (${selectedTower.upgradeCost}G)`;
         }
+        updateTargetingUI();
+    }
+    function updateTargetingUI() {
+        Object.values(targetButtons).forEach(button => button && button.classList.remove('selected'));
+        if (!selectedTower) return;
+        const button = targetButtons[selectedTower];
+        if (button) button.classList.add('selected');
+    }
+    function setSelectedTowerTargeting(mode) {
+        if (!selectedTower) return;
+        selectedTower.targeting = mode;
+        updateTargetingUI();
+        showUpgradeUI();
     }
     function showBuildUI() {
     selectedTower = null;
@@ -1091,5 +1156,11 @@ document.addEventListener('DOMContentLoaded', () => {
     mapEasyButton.addEventListener('click', () => initGame('easy'));
     mapMediumButton.addEventListener('click', () => initGame('medium'));
     mapHardButton.addEventListener('click', () => initGame('hard'));
+    targetFirstButton.addEventListener('click', () => setSelectedTowerTargeting('first'))
+    targetLastButton.addEventListener('click', () => setSelectedTowerTargeting('last'));
+    targetClosestButton.addEventListener('click', () => setSelectedTowerTargeting('closest'));
+    targetStrongestButton.addEventListener('click', () => setSelectedTowerTargeting('strongest'));
+    targetWeakestButton.addEventListener('click', () => setSelectedTowerTargeting('weakest'));
+    targetFastestButton.addEventListener('click', () => setSelectedTowerTargeting('fastest'));
     showBuildUI();
 });

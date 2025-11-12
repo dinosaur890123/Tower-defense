@@ -190,3 +190,32 @@ button:disabled {
 .meteor-target {
     cursor: crosshair;
 }
+#targeting-section {
+    margin-top: 8px;
+    border-top: 1px solid #3f3f6e;
+    padding-top: 10px;
+}
+#targeting-section h4 {
+    text-align: center;
+    margin: 0 0 8px 0;
+    font-size: 1rem;
+    color: #cfcfe6;
+}
+#targeting-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+#targeting-controls .target-button {
+    background-color: #37376c;
+    padding: 6px 8px;
+    font-size: 0.85rem;
+}
+#targeting-controls .target-button:hover {
+    background-color: #5a5a9e;
+}
+#argeting-controls .target-button.selected {
+    background-color: #7a7aff;
+    box-shadow: 0 0 8px #7a7aff;
+}
