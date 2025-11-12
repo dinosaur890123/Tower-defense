@@ -91,7 +91,7 @@ button {
     text-align: center;
     cursor: pointer;
     border: none;
-    width: 100;
+    width: 100%;
 }
 button:hover {
     background-color: #5a5a9e;
@@ -118,10 +118,10 @@ button:disabled {
 .hidden {
     display: none;
 }
-.sell-btn {
+.sell-button {
     background-color: #a04040;
 }
-.sell-btn:hover {
+.sell-button:hover {
     background-color: #c05050;
 }
 #upgrade-menu-container h3 {
@@ -201,21 +201,21 @@ button:disabled {
     font-size: 1rem;
     color: #cfcfe6;
 }
-#targeting-controls {
+#targeting-section {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     justify-content: center;
 }
-#targeting-controls .target-button {
+#targeting-section .target-button {
     background-color: #37376c;
     padding: 6px 8px;
     font-size: 0.85rem;
 }
-#targeting-controls .target-button:hover {
+#targeting-section .target-button:hover {
     background-color: #5a5a9e;
 }
-#argeting-controls .target-button.selected {
+#targeting-section .target-button.selected {
     background-color: #7a7aff;
     box-shadow: 0 0 8px #7a7aff;
 }
