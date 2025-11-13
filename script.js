@@ -609,6 +609,57 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+    class GoldMine extends BaseTower {
+        constructor(x, y) {
+            super(x, y, {
+                range: 0,
+                color: '#FFD700',
+                upgradeCost: 150,
+                initialCost: MINE_COST,
+                canHitFlying: false,
+                canHitGround: false
+            });
+            this.generateAmount = 15;
+            this.generateInterval = 5 * 60;
+            this.fireCooldown = this.generateInterval;
+            this.maxLevel = 4;
+        }
+        upgrade() {
+            if (this.level >= this.maxLevel) return false;
+            this.level++;
+            this.totalCost += this.upgradeCost;
+            this.generateAmount = Math.floor(this.generateAmount * 1.5);
+            this.generateInterval = Math.max(60, Math.floor(this.generateInterval * 0.85));
+            this.upgradeCost = Math.floor(this.upgradeCost * 1.8);
+            return true;
+        }
+        attack() {
+            if (this.fireCooldown > 0) {
+                this.fireCooldown--;
+                return;
+            }
+            gold += this.generateAmount;
+            showFloatingGold(this.x, this.y, `+${this.generateAmount}`);
+            updateUI();
+            this.fireCooldown = this.generateInterval;
+        }
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x - TILE_SIZE / 3, this.y - TILE_SIZE / 3, TILE_SIZE * 2/3, TILE_SIZE * 2/3);
+            ctx.fillStyle = '#8B7500';
+            ctx.fillRect(this.x - TILE_SIZE / 4, this.y - TILE_SIZE / 6, TILE_SIZE / 2, TILE_SIZE / 3);
+            ctx.fillStyle = 'white';
+            ctx.font = '12px Calibri';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(this.level, this.x, this.y - TILE_SIZE / 2.4);
+            if (selectedTower === this) this.drawRange();
+        }
+    }
+    const floaters = [];
+    function showFloatingGold(x, y, text) {
+        floaters.push({x, y: y - 10, text, alpha: 1, vy: -0.5});
+    }
     class BombTurret extends BaseTower {
         constructor(x, y) {
             super(x, y, {
@@ -707,6 +758,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     spells.freeze.unlocked = true;
                     showGlobalMessage("Global freeze unlocked!");
                 }
+                if (endlessMode && baseHealth > 0) {
+                    startWaveButton.textContent = 'Endless: next wave...';
+                    setTimeout(() => {
+                        if (!waveInProgress && baseHealth > 0) startWave();
+                    }, 1500);
+                }
             }
         }
         for (const tower of towers) {
@@ -741,6 +798,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (exp.timer <= 0) {
                 explosions.splice(i, 1);
             }
+        }
+        for (let i = floaters.length - 1; i >= 0; i--) {
+            const f = floaters[i];
+            f.y += f.vy;
+            f.alpha -= 0.02;
+            ctx.globalAlpha = Math.max(0, f.alpha);
+            ctx.fillStyle = '#FFD700';
+            ctx.font = '14px Calibri';
+            ctx.textAlign = 'center';
+            ctx.fillText(f.text, f.x, f.y);
+            ctx.globalAlpha = 1;
+            if (f.alpha <= 0) floaters.splice(i, 1);
         }
         if (buildingTower) {
             if (selectedTower) {
@@ -794,8 +863,11 @@ document.addEventListener('DOMContentLoaded', () => {
         waveDisplay.textContent = wave;
     }
     function getWaveComposition(w) {
+        if (w <= 0) return [];
         if (w % 5 === 0) {
-            for (let i = 0; i < 4 + Math.floor(w * 0.2); i++) comp.push('basic');
+            const comp = [];
+            const basics = 4 + Math.floor(w * 0.2);
+            for (let i = 0; i < basics; i++) comp.push('basic');
             if (w >= 6) comp.push('shield', 'regen');
             if (w >= 8) comp.push('drone');
             comp.push('boss');
@@ -822,6 +894,7 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'basic': return {range: TILE_SIZE * 3, color: 'rgba(0, 255, 255, 0.5)', cost: TURRET_COST};
             case 'frost': return {range: TILE_SIZE * 2.5, color: 'rgba(0, 0, 255, 0.5)', cost: FROST_COST};
             case 'bomb':  return {range: TILE_SIZE * 3.5, color: 'rgba(255, 165, 0, 0.5)', cost: BOMB_COST};
+            case 'mine':  return {range: 0, color: 'rgba(255, 215, 0, 0.5)', cost: MINE_COST};
             default: return null;
         }
     }
@@ -840,6 +913,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (towerType === 'basic') buildTurretButton.classList.add('selected');
             if (towerType === 'frost') buildFrostButton.classList.add('selected');
             if (towerType === 'bomb') buildBombButton.classList.add('selected');
+            if (towerType === 'mine') buildMineButton.classList.add('selected');
             showGlobalMessage("Click on a valid tile to build.");
         }
     }
@@ -861,12 +935,19 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.beginPath();
         ctx.arc(x, y, TILE_SIZE / 3, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = isValid ? 'rgba(0, 255, 255, 0.5)' : 'rgba(255, 0, 0, 0.5)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(x, y, stats.range, 0, Math.PI * 2);
-        ctx.stroke();
-    }
+        if (stats.range > 0) {
+            ctx.strokeStyle = stats.color;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(x, y, stats.range, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        if (!isValid) {
+            ctx.fillStyle = 'rgba(255,0,0,0.35)';
+            ctx.beginPath();
+            ctx.arc(x, y, TILE_SIZE / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
     function isValidPlacement(tileX, tileY) {
         if (tileX < 0 || tileX >= MAP_COLS || tileY < 0 || tileY >= MAP_ROWS) {
             return false;
@@ -892,6 +973,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (buildingTower === 'basic') cost = TURRET_COST;
             else if (buildingTower === 'frost') cost = FROST_COST;
             else if (buildingTower === 'bomb') cost = BOMB_COST;
+            else if (buildingTower === 'mine') cost = MINE_COST;
 
             if (gold >= cost) {
                 gold -= cost;
@@ -903,6 +985,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     towerPlaced = true;
                 } else if (buildingTower === 'bomb') {
                     towers.push(new BombTurret(x, y));
+                    towerPlaced = true;
+                } else if (buildingTower === 'mine') {
+                    towers.push(new GoldMine(x, y));
                     towerPlaced = true;
                 }
             } else {
@@ -995,12 +1080,16 @@ document.addEventListener('DOMContentLoaded', () => {
         upgradeMenuContainer.classList.remove('hidden');
         let statsHTML = `
         <strong>Type:</strong> ${selectedTower.constructor.name}<br>
-        <strong>Level:</strong> ${selectedTower.level} / ${selectedTower.maxLevel}<br>
+        <strong>Level:</strong> ${selectedTower.level} / ${selectedTower.maxLevel}<br>`;
+        if (isMine) {
+            statsHTML += `
+        <strong>Income:</strong> ${selectedTower.generateAmount}G / ${(selectedTower.generateInterval/60).toFixed(1)}s<br>`;
+        } else {
+            statsHTML += `
         <strong>Damage:</strong> ${selectedTower.damage || 'N/A'}<br>
         <strong>Range:</strong> ${(selectedTower.range / TILE_SIZE).toFixed(1)} tiles<br>
-        <strong>Fire Rate:</strong> ${(60 / selectedTower.fireRate).toFixed(1)}/sec
-        <strong>Targeting:</strong>  ${selectedTower.targeting.charAt(0).toUpperCase() + selectedTower.targeting.slide(1)}
-        `;
+        <strong>Fire Rate:</strong> ${(60 / selectedTower.fireRate).toFixed(1)}/sec<br>
+        <strong>Targeting:</strong>  ${selectedTower.targeting.charAt(0).toUpperCase() + selectedTower.targeting.slice(1)}<br>`;
         towerStatsDisplay.innerHTML = statsHTML;
         sellTowerButton.textContent = `Sell (${selectedTower.getSellValue()}G)`;
         if (selectedTower.level >= selectedTower.maxLevel) {
@@ -1010,12 +1099,13 @@ document.addEventListener('DOMContentLoaded', () => {
             upgradeTowerButton.disabled = false;
             upgradeTowerButton.textContent = `Upgrade (${selectedTower.upgradeCost}G)`;
         }
-        updateTargetingUI();
+        document.getElementById('targeting-section').style.display = isMine ? 'none' : 'flex';
+        if (!isMine) updateTargetingUI();
     }
     function updateTargetingUI() {
         Object.values(targetButtons).forEach(button => button && button.classList.remove('selected'));
         if (!selectedTower) return;
-        const button = targetButtons[selectedTower];
+        const button = targetButtons[selectedTower.targeting];
         if (button) button.classList.add('selected');
     }
     function setSelectedTowerTargeting(mode) {
@@ -1168,5 +1258,12 @@ document.addEventListener('DOMContentLoaded', () => {
     targetStrongestButton.addEventListener('click', () => setSelectedTowerTargeting('strongest'));
     targetWeakestButton.addEventListener('click', () => setSelectedTowerTargeting('weakest'));
     targetFastestButton.addEventListener('click', () => setSelectedTowerTargeting('fastest'));
+    endlessToggle.addEventListener('change', () => {
+        endlessMode = endlessToggle.checked;
+        showGlobalMessage(endlessMode ? "Endless mode enabled" : "Endless mode disabled");
+        if (endlessMode && !waveInProgress) {
+            startWaveButton.textContent = 'Endless: next wave...';
+        }
+    })
     showBuildUI();
 });
