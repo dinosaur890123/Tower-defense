@@ -140,9 +140,35 @@ document.addEventListener('DOMContentLoaded', () => {
             this.speedModifier = 1;
             this.slowTimer = 0;
             this.isFlying = false;
+            this.isCamo = opts.isCamo ?? false;
+            this.armor = opts.armor ?? 0;
+            this.fortified = opts.fortified ?? false;
+            if (this.fortified) {
+                this.maxHealth = Math.floor(this.maxHealth * 1.5);
+                this.health = this.maxHealth;
+            }
+            this.regrowRate = opts.regrowRate ?? 0;
+            this.outOfCombatTimer = 0;
         }
         applySlow(duration) {
             this.slowTimer = Math.max(this.slowTimer, duration);
+        }
+        takeDamage(amount, damageType = 'generic') {
+            this.outOfCombatTimer = 120;
+            let armorVal = this.armor;
+            if (armorVal > 0) {
+                if (damageType === 'magic') {
+                    armorVal = Math.max(0, Math.floor(armorVal * 0.5));
+                } else if (damageType === 'explosive') {
+                    armorVal = Math.floor(armorVal * 1.1);
+                }
+            }
+            const effective = Math.max(1, Math.floor(amount - armorVal));
+            this.health -= effective;
+            if (this.health <= 0) {
+                gold += this.goldValue;
+                updateUI();
+            }
         }
         move() {
             if (this.slowTimer > 0) {
@@ -150,6 +176,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.speedModifier = 0.5;
             } else {
                 this.speedModifier = 1;
+            }
+            if (this.outOfCombatTimer > 0) {
+                this.outOfCombatTimer--;
+            } else if (this.regrowRate > 0 && this.health > 0 && this.health < this.maxHealth) {
+                this.health = Math.min(this.maxHealth, this.health + this.regrowRate);
             }
             if (this.pathIndex >= path.length - 1) {
                 baseHealth -= this.baseDamage;
@@ -174,8 +205,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         draw() {
+            if (this.isCamo) {
+                ctx.save();
+                ctx.globalAlpha = 0.6;
+            }
             ctx.fillStyle = this.slowTimer > 0 ? 'deepskyblue' : 'red';
             ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
+            if (this.camo) {
+                ctx.fillStyle = '#3ac0a6';
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y - this.height / 2 - 6);
+                ctx.lineTo(this.x - 5, this.y - this.height / 2 - 1);
+                ctx.lineTo((this.x + 5, this.y - this.height / 2 - 1));
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
             ctx.fillStyle = 'rgba(31, 29, 29, 1)';
             ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2 - 8, this.width, 5);
             ctx.fillStyle = 'lime';
@@ -256,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
     class ShieldedEnemy extends Enemy {
         constructor(wave) {
             const baseHP = 140 + wave * 20;
-            super(baseHP, 0.9 + wave * 0.03, 8, 12, '#7b8ba3', TILE_SIZE * 0.65);
+            super(baseHP, 0.9 + wave * 0.03, 8, 12, '#7b8ba3', TILE_SIZE * 0.65, {armor: 6 + Math.floor(wave * 0.3)});
             this.armor = 6 + Math.floor(wave * 0.3);
         }
         takeDamage(amount) {
@@ -340,6 +385,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.color = color;
             this.slowDuration = slowDuration;
             this.size = 5;
+            this.damageType = damageType;
+            this.pierce = pierce;
+            this.chainRadius = 28;
         }
         move() {
             if (!this.target || this.target.health <= 0) {
@@ -352,6 +400,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.target.takeDamage(this.damage);
                 if (this.slowDuration > 0) {
                     this.target.applySlow(this.slowDuration);
+                }
+                this.pierce--;
+                if (this.pierce > 0) {
+                    const impactX = this.target.x;
+                    const impactY = this.target.y;
+                    let next = null;
+                    let best = Infinity;
+                    for (const e of enemies) {
+                        if (e === this.target || e.health <= 0) continue;
+                        const d = Math.hypot(e.x - impactX, e.y - impactY);
+                        if (d <= this.chainRadius && d < best) {
+                            next = e;
+                            best = d;
+                        }
+                        if (next) {
+                            this.x = impactX;
+                            this.y = impactY;
+                            this.target = next;
+                            return true;
+                        }
+                    }
+                    return false;
                 }
                 return false;
             } else {
@@ -399,7 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const dy = enemy.y - this.targetY;
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     if (dist < this.splashRadius) {
-                        enemy.takeDamage(this.damage);
+                        enemy.takeDamage(this.damage, 'explosive');
                     }
                 }
                 return false;
@@ -441,6 +511,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.canHitGround = opts.canHitGround ?? true;
             this.rangeColor = opts.rangeColor;
             this.targeting = 'first';
+            this.canDetectCamo = opts.canDetectCamo ?? false;
+            this.damageType = opts.damageType ?? 'physical';
+            this.pierce = opts.pierce ?? 1;
         }
         getSellValue() {
             return Math.floor(this.totalCost * 0.75);
@@ -456,6 +529,7 @@ document.addEventListener('DOMContentLoaded', () => {
         canHit(enemy) {
             if (enemy.isFlying && !this.canHitFlying) return false;
             if (!enemy.isFlying && !this.canHitGround) return false;
+            if (enemy.isCamo && !this.canDetectCamo) return false;
             return true;
         }
         findTarget() {
@@ -541,7 +615,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 upgradeCost: 100,
                 initialCost: TURRET_COST,
                 canHitFlying: true,
-                canHitGround: true
+                canHitGround: true,
+                canDetectCamo: false,
+                damageType: 'physical',
+                pierce: 1
             });
             this.damage = 18;
             this.fireRate = 25;
@@ -553,6 +630,8 @@ document.addEventListener('DOMContentLoaded', () => {
             this.damage = Math.floor(this.damage * 1.8);
             this.range += TILE_SIZE * 0.25;
             this.fireRate = Math.floor(this.fireRate * 0.85);
+            if (this.level === 2) this.canDetectCamo = true;
+            if (this.level === 3) this.pierce += 1;
             this.upgradeCost = Math.floor(this.upgradeCost * 2);
             return true;
         }
@@ -566,7 +645,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.fireCooldown = this.fireRate;
                 projectiles.push(new Projectile(
                     this.x, this.y, this.target, 
-                    7, this.damage, this.color
+                    7, this.damage, this.color, 0, this.damageType, this.pierce
                 ));
             }
         }
@@ -579,7 +658,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 upgradeCost: 110,
                 initialCost: FROST_COST,
                 canHitFlying: true,
-                canHitGround: true
+                canHitGround: true,
+                canDetectCamo: true,
+                damageType: 'magic',
+                pierce: 1
             });
             this.damage = 5;
             this.slowDuration = 60;
@@ -604,7 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.target) {
                 this.fireCooldown = this.fireRate;
                 projectiles.push(new Projectile(
-                    this.x, this.y, this.target, 6, this.damage, this.color, this.slowDuration
+                    this.x, this.y, this.target, 6, this.damage, this.color, this.slowDuration, this.damageType, this.pierce
                 ));
             }
         }
@@ -617,7 +699,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 upgradeCost: 150,
                 initialCost: MINE_COST,
                 canHitFlying: false,
-                canHitGround: false
+                canHitGround: false,
+                canDetectCamo: false,
+                damageType: 'explosive',
+                pierce: 1
             });
             this.generateAmount = 15;
             this.generateInterval = 5 * 60;
@@ -733,7 +818,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         enemy = new Enemy(health, speed, 5, 10, 'red', TILE_SIZE * 0.6);
                         break;
                 }
-                if (enemy) enemies.push(enemy);
+                if (enemy) {
+                    applyEnemyModifiers(enemy, wave, enemyType);
+                    enemies.push(enemy);
+                }
                 waveSpawnTimer = 30;
             }
             if (waveSpawnTimer > 0) {
@@ -829,6 +917,28 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         requestAnimationFrame(gameLoop);
+    }
+    function applyEnemyModifiers(enemy, w, type) {
+        if (!enemy || enemy.health <= 0) return;
+        if (enemy.isBoss) return;
+        const camoChance = Math.min(0.6, 0.08 + 0.02 * w);
+        if (!enemy.isCamo && w >= 5 && Math.random() < camoChance && type !== 'shield') {
+            enemy.isCamo = true;
+        }
+        const armorChance = Math.min(0.5, 0.05 + 0.02 * w);
+        if (Math.random() < armorChance) {
+            enemy.armor = (enemy.armor || 0) + 2 + Math.floor(w * 0.1);                       
+        }
+        const fortifiedChance = Math.min(0.35, 0.04 + 0.015 * w);
+        if (!enemy.fortified && Math.random() < fortifiedChance && type !== 'drone') {
+            enemy.fortified = true;
+            enemy.maxHealth = Math.floor(enemy.maxHealth * 1.5);
+            enemy.health = Math.min(enemy.maxHealth, Math.floor(enemy.health * 1.5));
+        }
+        const regrowChance = Math.min(0.4, 0.03 + 0.015 * w);
+        if (enemy.regrowRate === 0 && Math.random() < regrowChance) {
+            enemy.regrowRate = 0.2 + 0.02 * w;
+        }
     }
     function drawMeteorPreview() {
         const r = SPELL_COSTS.meteor.radius;
