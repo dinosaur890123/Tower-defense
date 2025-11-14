@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     class Enemy {
-        constructor(health, speed, goldValue = 5, baseDamage = 10, color = 'red', size = TILE_SIZE * 0.6) {
+        constructor(health, speed, goldValue = 5, baseDamage = 10, color = 'red', size = TILE_SIZE * 0.6, opts = {}) {
             this.x = path[0].x * TILE_SIZE + TILE_SIZE / 2;
             this.y = path[0].y * TILE_SIZE + TILE_SIZE / 2;
             this.health = health;
@@ -140,6 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.speedModifier = 1;
             this.slowTimer = 0;
             this.isFlying = false;
+
             this.isCamo = opts.isCamo ?? false;
             this.armor = opts.armor ?? 0;
             this.fortified = opts.fortified ?? false;
@@ -376,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     class Projectile {
-        constructor(x, y, target, speed, damage, color, slowDuration = 0) {
+        constructor(x, y, target, speed, damage, color, slowDuration = 0, damageType = 'physical', pierce = 1) {
             this.x = x;
             this.y = y;
             this.target = target;
@@ -1058,6 +1059,33 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.arc(x, y, TILE_SIZE / 2, 0, Math.PI * 2);
             ctx.fill();
         }
+    }
+    function getNextLevelPreview(tower) {
+        if (tower.level >= tower.maxLevel) return null;
+        const next = {level: tower.level + 1};
+        if (tower instanceof BasicTurret) {
+            next.damage = Math.floor(tower.damage * 1.8);
+            next.range = (tower.range + TILE_SIZE * 0.25);
+            next.fireRate = Math.floor(tower.fireRate * 0.85);
+            next.camo = (tower.level + 1) >= 2 ? true : tower;
+            next.pierce = (tower.level + 1) === 3 ? tower.pierce + 1 : tower.pierce;
+        } else if (tower instanceof FrostTurret) {
+            next.damage = tower.damage + 2;
+            next.range = tower.range + TILE_SIZE * 0.25;
+            next.fireRate = tower.fireRate;
+            next.slowDuration = Math.floor(tower.slowDuration * 1.25);
+            next.camo = true;
+            next.pierce = tower.pierce;
+        } else if (tower instanceof BombTurret) {
+            next.damage = Math.floor(tower.damage * 1.5);
+            next.fireRate = Math.floor(tower.fireRate * 0.9);
+            next.splashRadius = tower.splashRadius + TILE_SIZE;
+        } else if (tower instanceof GoldMine) {
+            next.generateAmount = Math.floor(tower.generateAmount * 1.5);
+            next.generateInterval = Math.max(60, Math.floor(tower.generateInterval * 0.85));
+        }
+        return next;
+    }
     function isValidPlacement(tileX, tileY) {
         if (tileX < 0 || tileX >= MAP_COLS || tileY < 0 || tileY >= MAP_ROWS) {
             return false;
@@ -1188,6 +1216,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!selectedTower) return;
         buildMenuContainer.classList.add('hidden');
         upgradeMenuContainer.classList.remove('hidden');
+        const t = selectedTower;
+        const isMine = (selectedTower instanceof GoldMine);
         let statsHTML = `
         <strong>Type:</strong> ${selectedTower.constructor.name}<br>
         <strong>Level:</strong> ${selectedTower.level} / ${selectedTower.maxLevel}<br>`;
@@ -1199,6 +1229,11 @@ document.addEventListener('DOMContentLoaded', () => {
         <strong>Damage:</strong> ${selectedTower.damage || 'N/A'}<br>
         <strong>Range:</strong> ${(selectedTower.range / TILE_SIZE).toFixed(1)} tiles<br>
         <strong>Fire Rate:</strong> ${(60 / selectedTower.fireRate).toFixed(1)}/sec<br>
+        strong>Damage Type:</strong> ${t.damageType}<br>
+        <strong>Pierce:</strong> ${t.pierce}<br>
+        <strong>Camo Detection:</strong> ${t.canDetectCamo ? 'Yes' : 'No'}<br>
+        <strong>Can Hit Flying:</strong> ${t.canHitFlying ? 'Yes' : 'No'}<br>
+        <strong>Can Hit Ground:</strong> ${t.canHitGround ? 'Yes' : 'No'}<br>
         <strong>Targeting:</strong>  ${selectedTower.targeting.charAt(0).toUpperCase() + selectedTower.targeting.slice(1)}<br>`;
         towerStatsDisplay.innerHTML = statsHTML;
         sellTowerButton.textContent = `Sell (${selectedTower.getSellValue()}G)`;
@@ -1308,7 +1343,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dy = enemy.y - y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < SPELL_COSTS.meteor.radius) {
-                enemy.takeDamage(SPELL_COSTS.meteor.damage);
+                enemy.takeDamage(SPELL_COSTS.meteor.damage, 'fire');
             }
         }
         cancelSpellMode();
