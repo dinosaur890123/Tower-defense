@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
         weakest: targetWeakestButton,
         fastest: targetFastestButton,
     };
-    const buildButtons = [buildTurretButton, buildFrostButton, buildBombButton];
+    const buildButtons = [buildTurretButton, buildFrostButton, buildBombButton, buildMineButton];
     const TILE_SIZE = 40;
     const MAP_COLS = canvas.width / TILE_SIZE;
     const MAP_ROWS = canvas.height / TILE_SIZE;
@@ -212,27 +212,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             ctx.fillStyle = this.slowTimer > 0 ? 'deepskyblue' : 'red';
             ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
-            if (this.camo) {
+            if (this.isCamo) {
+                ctx.restore();
                 ctx.fillStyle = '#3ac0a6';
                 ctx.beginPath();
                 ctx.moveTo(this.x, this.y - this.height / 2 - 6);
                 ctx.lineTo(this.x - 5, this.y - this.height / 2 - 1);
-                ctx.lineTo((this.x + 5, this.y - this.height / 2 - 1));
+                ctx.lineTo(this.x + 5, this.y - this.height / 2 - 1);
                 ctx.closePath();
                 ctx.fill();
-                ctx.restore();
             }
             ctx.fillStyle = 'rgba(31, 29, 29, 1)';
             ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2 - 8, this.width, 5);
             ctx.fillStyle = 'lime';
             ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2 - 8, this.width * (this.health / this.maxHealth), 5);
-        }
-        takeDamage(amount) {
-            this.health -= amount;
-            if (this.health <= 0) {
-                gold += this.goldValue;
-                updateUI();
-            }
         }
     }
     class RunnerEnemy extends Enemy {
@@ -305,9 +298,8 @@ document.addEventListener('DOMContentLoaded', () => {
             super(baseHP, 0.9 + wave * 0.03, 8, 12, '#7b8ba3', TILE_SIZE * 0.65, {armor: 6 + Math.floor(wave * 0.3)});
             this.armor = 6 + Math.floor(wave * 0.3);
         }
-        takeDamage(amount) {
-            const effective = Math.max(1, amount - this.armor);
-            super.takeDamage(effective);
+        takeDamage(amount, damageType = 'generic') {
+            super.takeDamage(amount, damageType);
         }
     }
     class RegenEnemy extends Enemy {
@@ -398,7 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dy = this.target.y - this.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < this.speed) {
-                this.target.takeDamage(this.damage);
+                this.target.takeDamage(this.damage, this.damageType);
                 if (this.slowDuration > 0) {
                     this.target.applySlow(this.slowDuration);
                 }
@@ -415,12 +407,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             next = e;
                             best = d;
                         }
-                        if (next) {
-                            this.x = impactX;
-                            this.y = impactY;
-                            this.target = next;
-                            return true;
-                        }
+                    }
+                    if (next) {
+                        this.x = impactX;
+                        this.y = impactY;
+                        this.target = next;
+                        return true;
                     }
                     return false;
                 }
@@ -580,6 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.target = candidates[0] || null;
         }
         drawRange() {
+            if (this.range <= 0) return;
             ctx.strokeStyle = this.rangeColor || 'rgba(255, 255, 255, 0.3)';
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -1067,7 +1060,7 @@ document.addEventListener('DOMContentLoaded', () => {
             next.damage = Math.floor(tower.damage * 1.8);
             next.range = (tower.range + TILE_SIZE * 0.25);
             next.fireRate = Math.floor(tower.fireRate * 0.85);
-            next.camo = (tower.level + 1) >= 2 ? true : tower;
+            next.camo = (tower.level + 1) >= 2 ? true : tower.canDetectCamo;
             next.pierce = (tower.level + 1) === 3 ? tower.pierce + 1 : tower.pierce;
         } else if (tower instanceof FrostTurret) {
             next.damage = tower.damage + 2;
@@ -1229,7 +1222,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <strong>Damage:</strong> ${selectedTower.damage || 'N/A'}<br>
         <strong>Range:</strong> ${(selectedTower.range / TILE_SIZE).toFixed(1)} tiles<br>
         <strong>Fire Rate:</strong> ${(60 / selectedTower.fireRate).toFixed(1)}/sec<br>
-        strong>Damage Type:</strong> ${t.damageType}<br>
+        <strong>Damage Type:</strong> ${t.damageType}<br>
         <strong>Pierce:</strong> ${t.pierce}<br>
         <strong>Camo Detection:</strong> ${t.canDetectCamo ? 'Yes' : 'No'}<br>
         <strong>Can Hit Flying:</strong> ${t.canHitFlying ? 'Yes' : 'No'}<br>
@@ -1420,7 +1413,7 @@ document.addEventListener('DOMContentLoaded', () => {
     mapEasyButton.addEventListener('click', () => initGame('easy'));
     mapMediumButton.addEventListener('click', () => initGame('medium'));
     mapHardButton.addEventListener('click', () => initGame('hard'));
-    targetFirstButton.addEventListener('click', () => setSelectedTowerTargeting('first'))
+    targetFirstButton.addEventListener('click', () => setSelectedTowerTargeting('first'));
     targetLastButton.addEventListener('click', () => setSelectedTowerTargeting('last'));
     targetClosestButton.addEventListener('click', () => setSelectedTowerTargeting('closest'));
     targetStrongestButton.addEventListener('click', () => setSelectedTowerTargeting('strongest'));
@@ -1432,6 +1425,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (endlessMode && !waveInProgress) {
             startWaveButton.textContent = 'Endless: next wave...';
         }
-    })
+    });
     showBuildUI();
 });
