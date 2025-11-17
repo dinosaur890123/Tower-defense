@@ -1235,9 +1235,32 @@ document.addEventListener('DOMContentLoaded', () => {
         <strong>Can Hit Flying:</strong> ${t.canHitFlying ? 'Yes' : 'No'}<br>
         <strong>Can Hit Ground:</strong> ${t.canHitGround ? 'Yes' : 'No'}<br>
         <strong>Targeting:</strong>  ${selectedTower.targeting.charAt(0).toUpperCase() + selectedTower.targeting.slice(1)}<br>`;
+        const preview = getNextLevelPreview(t);
+        if (preview) {
+            statsHTML += `<hr style="border:0;border-top:1px solid #5b5757ff;margin:6px 0;">
+            <strong>Next Level (${preview.level}) Preview:</strong><br>`;
+            if (t instanceof BasicTurret) {
+                statsHTML += `Damage: ${t.damage} -> ${preview.damage}<br>
+                Range: ${(t.range/TILE_SIZE).toFixed(1)} -> ${(preview.range/TILE_SIZE).toFixed(1)} tiles<br>
+                Fire Rate: ${(60/t.fireRate).toFixed(1)} -> ${(60/preview.fireRate).toFixed(1)}/sec<br>
+                Camo Detection: ${t.canDetectCamo ? 'Yes' : 'No'} -> ${preview.camo ? 'Yes' : 'No'}<br>
+                Pierce: ${t.pierce} -> ${preview.pierce}<br>`;
+            } else if (t instanceof FrostTurret) {
+                statsHTML += `Damage: ${t.damage} -> ${preview.damage}<br>
+                Range: ${(t.range/TILE_SIZE).toFixed(1)} -> ${(preview.range/TILE_SIZE).toFixed(1)} tiles<br>
+                Slow Duration: ${(t.slowDuration/60).toFixed(1)}s -> ${(preview.slowDuration/60).toFixed(1)}s<br>`;
+            } else if (t instanceof BombTurret) {
+                statsHTML += `Damage: ${t.damage} -> ${preview.damage}<br>
+                Fire Rate: ${(60/t.fireRate).toFixed(1)} -> ${(60/preview.fireRate).toFixed(1)}/sec<br>
+                Splash Radius: ${(t.splashRadius/TILE_SIZE).toFixed(1)} -> ${(preview.splashRadius/TILE_SIZE).toFixed(1)} tiles<br>`;
+            } else if (t instanceof GoldMine) {
+                statsHTML += `Income: ${t.generateAmount} -> ${preview.generateAmount} gold<br>
+                Interval: ${(t.generateInterval/60).toFixed(1)}s -> ${(preview.generateInterval/60).toFixed(1)}s<br>`;
+            }            
+        }
         towerStatsDisplay.innerHTML = statsHTML;
         sellTowerButton.textContent = `Sell (${selectedTower.getSellValue()}G)`;
-        if (selectedTower.level >= selectedTower.maxLevel) {
+        if (t.level >= t.maxLevel) {
             upgradeTowerButton.disabled = true;
             upgradeTowerButton.textContent = 'Max Level';
         } else {
