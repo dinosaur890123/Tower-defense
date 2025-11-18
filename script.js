@@ -39,6 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const targetFastestButton = document.getElementById('target-fastest-button');
     const buildMineButton = document.getElementById('build-mine-button');
     const endlessToggle = document.getElementById('endless-toggle');
+    const pauseButton = document.getElementById('pause-button');
+    const speedButton = document.getElementById('speed-button');
     const targetButtons = {
         first: targetFirstButton,
         last: targetLastButton,
@@ -115,6 +117,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let projectiles = [];
     let spellMode = null;
     let endlessMode = false;
+    let paused = false;
+    let timeScale = 1;
     const SPELL_COSTS = {
         meteor: {maxCooldown: 120 * 60, radius:  TILE_SIZE * 3, damage: 300},
         freeze: {maxCooldown: 180 * 60, duration: 5 * 60}
@@ -778,139 +782,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     function gameLoop() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawMap();
-        if (waveInProgress) {
-            if (enemiesToSpawn.length > 0 && waveSpawnTimer <= 0) {
-                const enemyType = enemiesToSpawn.shift();
-                let enemy;
-                switch (enemyType) {
-                    case 'runner':
-                        enemy = new RunnerEnemy();
-                        break;
-                    case 'brute':
-                        enemy = new BruteEnemy();
-                        break;
-                    case 'drone':
-                        enemy = new DroneEnemy();
-                        break;
-                    case 'regen':
-                        enemy = new RegenEnemy(wave);
-                        break;
-                    case 'swarm':
-                        enemy = new SwarmEnemy(wave);
-                        break;
-                    case 'boss':
-                        enemy = new BossEnemy(wave);
-                        break;
-                    case 'shield':
-                        enemy = new ShieldedEnemy(wave);
-                        break;
-                    case 'basic':
-                        const health = 50 + wave * 10;
-                        const speed = 1 + wave * 0.1;
-                        enemy = new Enemy(health, speed, 5, 10, 'red', TILE_SIZE * 0.6);
-                        break;
-                }
-                if (enemy) {
-                    applyEnemyModifiers(enemy, wave, enemyType);
-                    enemies.push(enemy);
-                }
-                waveSpawnTimer = 30;
+        if (!paused) {
+            for (let s = 0; s < timeScale; s++) {
+                updateStep();
+                if (baseHealth <= 0) break;
             }
-            if (waveSpawnTimer > 0) {
-                waveSpawnTimer--;
-            }
-            if (enemiesToSpawn.length === 0 && enemies.length === 0) {
-                waveInProgress = false;
-                startWaveButton.disabled = false;
-                startWaveButton.textContent = 'Start next wave!';
-                const interestEarned = Math.min(Math.floor(gold * INTEREST_RATE), MAX_INTEREST);
-                if (interestEarned > 0) {
-                    gold+= interestEarned;
-                    showGlobalMessage(`+${interestEarned}G Interest!`, 'interest');
-                }
-                gold += 50 + wave * 10;
-                updateUI();
-                if (wave === 3 && !spells.meteor.unlocked) {
-                    spells.meteor.unlocked = true;
-                    showGlobalMessage("Meteor strike unlocked!");
-                }
-                if (wave === 7 && !spells.freeze.unlocked) {
-                    spells.freeze.unlocked = true;
-                    showGlobalMessage("Global freeze unlocked!");
-                }
-                if (endlessMode && baseHealth > 0) {
-                    startWaveButton.textContent = 'Endless: next wave...';
-                    setTimeout(() => {
-                        if (!waveInProgress && baseHealth > 0) startWave();
-                    }, 1500);
-                }
-            }
-        }
-        for (const tower of towers) {
-            tower.draw();
-            tower.attack();
-        }
-        if (selectedTower) {
-            selectedTower.drawSelection();
-        }
-        for (let i = projectiles.length - 1; i >= 0; i--) {
-            const p = projectiles[i];
-            p.draw();
-            if (!p.move()) {
-                projectiles.splice(i, 1);
-            }
-        }
-        for (let i = enemies.length - 1; i >= 0; i--) {
-            const enemy = enemies[i];
-            enemy.move();
-            enemy.draw();
-            if (enemy.health <= 0) {
-                enemies.splice(i, 1);
-            }
-        }
-        for (let i = explosions.length - 1; i >= 0; i--) {
-            const exp = explosions[i];
-            exp.timer--;
-            ctx.fillStyle = exp.color;
-            ctx.beginPath();
-            ctx.arc(exp.x, exp.y, exp.radius * (1 - exp.timer / 10), 0, Math.PI * 2);
-            ctx.fill();
-            if (exp.timer <= 0) {
-                explosions.splice(i, 1);
-            }
-        }
-        for (let i = floaters.length - 1; i >= 0; i--) {
-            const f = floaters[i];
-            f.y += f.vy;
-            f.alpha -= 0.02;
-            ctx.globalAlpha = Math.max(0, f.alpha);
-            ctx.fillStyle = '#FFD700';
-            ctx.font = '14px Calibri';
-            ctx.textAlign = 'center';
-            ctx.fillText(f.text, f.x, f.y);
-            ctx.globalAlpha = 1;
-            if (f.alpha <= 0) floaters.splice(i, 1);
-        }
-        if (buildingTower) {
-            if (selectedTower) {
-                showBuildUI();
-            }
-            drawTowerPreview();
-        }
-        if (spellMode === 'meteor') {
-            drawMeteorPreview();
-        }
-        updateSpells();
-        
-        if (baseHealth <= 0) {
-            baseHealth = 0;
-            updateUI();
-            gameOver();
-            return;
-        }
+            drawAll();
+        if (baseHealth <= 0) return;
         requestAnimationFrame(gameLoop);
+        }
     }
     function applyEnemyModifiers(enemy, w, type) {
         if (!enemy || enemy.health <= 0) return;
@@ -1302,6 +1182,135 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUI();
         showBuildUI();
     }
+    function updateStep() {
+        if (waveInProgress) {
+            if (enemiesToSpawn.length > 0 && waveSpawnTimer <= 0) {
+                const enemyType = enemiesToSpawn.shift();
+                let enemy;
+                switch (enemyType) {
+                    case 'runner': enemy = new RunnerEnemy(); break;
+                    case 'brute': enemy = new BruteEnemy(); break;
+                    case 'drone': enemy = new RegenEnemy(wave); break;
+                    case 'swarm': enemy = new SwarmEnemy(wave); break;
+                    case 'boss': enemy = new BossEnemy(wave); break;
+                    case 'shield': enemy = new ShieldedEnemy(wave); break;
+                    case 'basic': {
+                        const health = 50 + wave * 10;
+                        const speed = 1 + wave * 0.1;
+                        enemy = new Enemy(health, speed, 5, 10, 'red', TILE_SIZE * 0.6);
+                        break;
+                    }
+                }
+                if (enemy) {
+                    applyEnemyModifiers(enemy, wave, enemyType);
+                    enemies.push(enemy);
+                }
+                waveSpawnTimer = 30;
+            }
+            if (waveSpawnTimer > 0) waveSpawnTimer--;
+            if (enemiesToSpawn.length === 0 && enemies.length === 0) {
+                waveInProgress = false;
+            startWaveButton.disabled = false;
+            startWaveButton.textContent = 'Start next wave!';
+            const interestEarned = Math.min(Math.floor(gold * INTEREST_RATE), MAX_INTEREST);
+            if (interestEarned > 0) {
+                gold += interestEarned;
+                showGlobalMessage(`+${interestEarned}gold Interest!`, 'interest');
+            }
+            gold += 50 + wave * 10;
+            updateUI();
+            if (wave === 3 && !spells.meteor.unlocked) {
+                spells.meteor.unlocked = true;
+                showGlobalMessage("Meteor strike unlocked!");
+            }
+            if (wave === 7 && !spells.freeze.unlocked) {
+                spells.freeze.unlocked = true;
+                showGlobalMessage("Global freeze unlocked!");
+            }
+            if (endlessMode && baseHealth > 0) {
+                startWaveButton.textContent = 'Endless: next wave...';
+                setTimeout(() => {
+                    if (!waveInProgress && baseHealth > 0) startWave();
+                }, 1500);
+            }
+            }
+        }
+        for (const tower of towers) {
+            tower.attack();
+        }
+        for (let i = projectiles.length - 1; i >= 0; i--) {
+            const p = projectiles[i];
+            if (!p.move()) {
+                projectiles.splice(i, 1);
+            }
+        }
+        for (let i = explosions.length - 1; i >= 0; i--) {
+            explosions[i].timer--;
+            if (explosions[i].timer <= 0) explosions.splice(i, 1);
+        }
+        for (let i = floaters.length - 1; i >= 0; i--) {
+            const f = floaters[i];
+            f.y += f.vy;
+            f.alpha -= 0.02;
+            if (f.alpha <= 0) floaters.splice(i, 1);
+        }
+        updateSpells();
+        if (baseHealth <= 0) {
+            baseHealth = 0;
+            updateUI();
+            gameOver();
+        }
+    }
+    function drawAll() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawMap();
+        for (const tower of towers) {
+            tower.draw();
+        }
+        if (selectedTower) {
+            selectedTower.drawSelection();
+        }
+        for (let i = 0; i < projectiles.length; i++) {
+            projectiles[i].draw();
+        }
+        for (let i = 0; i < enemies.length; i++) {
+            enemies[i].draw();
+        }
+        for (let i = 0; i < explosions.length; i++) {
+            const exp = explosions[i];
+            ctx.fillStyle = exp.color;
+            ctx.beginPath();
+            ctx.arc(exp.x, exp.y, exp.radius * (1 - exp.timer / 10), 0, Math.PI * 2);
+            ctx.fill();
+        }
+        for (let i = 0; i < floaters.length; i++) {
+            const f = floaters[i];
+            ctx.globalAlpha = Math.max(0, f.alpha);
+            ctx.fillStyle = '#FFD700';
+            ctx.font = '14px Calibri';
+            ctx.textAlign = 'center';
+            ctx.fillText(f.text, f.x, f.y);
+            ctx.globalAlpha = 1;
+        }
+        if (buildingTower) {
+            if (selectedTower) {
+                showBuildUI();
+            }
+            drawTowerPreview();
+        }
+        if (spellMode === 'meteor') {
+            drawMeteorPreview();
+        }
+        if (paused) {
+            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#ffeb3b';
+            ctx.font = '52px Calibri';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2);
+        }
+    }
     function updateSpells() {
         if (spells.meteor.unlocked) {
             meteorStrikeButton.classList.remove('hidden');
@@ -1419,6 +1428,14 @@ document.addEventListener('DOMContentLoaded', () => {
     targetStrongestButton.addEventListener('click', () => setSelectedTowerTargeting('strongest'));
     targetWeakestButton.addEventListener('click', () => setSelectedTowerTargeting('weakest'));
     targetFastestButton.addEventListener('click', () => setSelectedTowerTargeting('fastest'));
+    pauseButton.addEventListener('click', () => {
+        paused = !paused;
+    pauseButton.textContent = paused ? 'Resume' : 'Pause';
+    });
+    speedButton.addEventListener('click', () => {
+        timeScale = timeScale === 1 ? 2 : timeScale === 2 ? 3 : 1;
+        speedButton.textContent = `Speed: ${timeScale}x`;
+    })
     endlessToggle.addEventListener('change', () => {
         endlessMode = endlessToggle.checked;
         showGlobalMessage(endlessMode ? "Endless mode enabled" : "Endless mode disabled");
