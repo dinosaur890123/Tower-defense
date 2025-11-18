@@ -1435,7 +1435,7 @@ document.addEventListener('DOMContentLoaded', () => {
     speedButton.addEventListener('click', () => {
         timeScale = timeScale === 1 ? 2 : timeScale === 2 ? 3 : 1;
         speedButton.textContent = `Speed: ${timeScale}x`;
-    })
+    });
     endlessToggle.addEventListener('change', () => {
         endlessMode = endlessToggle.checked;
         showGlobalMessage(endlessMode ? "Endless mode enabled" : "Endless mode disabled");
