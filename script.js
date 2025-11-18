@@ -588,11 +588,19 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.beginPath();
             ctx.arc(this.x, this.y, TILE_SIZE / 3 + (this.level * 1.5), 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = 'white';
-            ctx.font = '12px Calibri';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(this.level, this.x, this.y);
+            if (this.specialization) {
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 10px Calibri';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.specialization, this.x, this.y);
+            } else {
+                ctx.fillStyle = 'white';
+                ctx.font = '12px Calibri';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.level, this.x, this.y);
+            }
             if (selectedTower === this) {
                 this.drawRange();
             }
@@ -628,7 +636,10 @@ document.addEventListener('DOMContentLoaded', () => {
             this.damage = Math.floor(this.damage * 1.8);
             this.range += TILE_SIZE * 0.25;
             this.fireRate = Math.floor(this.fireRate * 0.85);
-            if (this.level === 2) this.canDetectCamo = true;
+            if (this.level === 2) {
+                this.canDetectCamo = true;
+                this.upgradeCost = 250;
+            }
             if (this.level === 3) this.pierce += 1;
             this.upgradeCost = Math.floor(this.upgradeCost * 2);
             return true;
@@ -644,6 +655,90 @@ document.addEventListener('DOMContentLoaded', () => {
                 projectiles.push(new Projectile(
                     this.x, this.y, this.target, 
                     7, this.damage, this.color, 0, this.damageType, this.pierce
+                ));
+            }
+        }
+    }
+    class MachineGunTurret extends BaseTower {
+        constructor(x, y, fromTower) {
+            super(x, y, {
+                range: fromTower.range,
+                color: '#38ecff',
+                upgradeCost: 400,
+                initialCost: fromTower.totalCost,
+                canHitFlying: true,
+                canHitGround: true,
+                canDetectCamo: true,
+                damageType: 'physical',
+                pierce: 1
+            });
+            this.damage = 12;
+            this.fireRate = 8;
+            this.level = fromTower.level;
+            this.maxLevel = 4;
+            this.specialization = 'MG';
+        }
+        upgrade() {
+            if (this.level >= this.maxLevel) return false;
+            this.level++;
+            this.totalCost += this.upgradeCost;
+            this.damage += 4;
+            this.fireRate = Math.max(4, this.fireRate - 1);
+            this.upgradeCost = Math.floor(this.upgradeCost * 1.8);
+            return true;
+        }
+        attack() {
+            if (this.fireCooldown > 0) {
+                this.fireCooldown--;
+                return;
+            }
+            this.findTarget();
+            if (this.target) {
+                this.fireCooldown = this.fireRate;
+                projectiles.push(new Projectile(
+                    this.x, this.y, this.target, 8, this.damage, this.color, 0, this.damageType, this.pierce
+                ));
+            }
+        }
+    }
+    class SniperTurret extends BaseTower {
+        constructor(x, y, fromTower) {
+            super (x, y, {
+                range: fromTower.range + TILE_SIZE * 2,
+                color: '#05b3b3ff',
+                upgradeCost: 450,
+                initialCost: fromTower.totalCost,
+                canHitFlying: true,
+                canHitGround: true,
+                canDetectCamo: true,
+                damageType: 'physical',
+                pierce: 2
+            });
+            this.damage = 120;
+            this.fireRate = 90;
+            this.level = fromTower.level;
+            this.maxLevel = 4;
+            this.specialization = 'SN';
+        }
+        upgrade() {
+            if (this.level >= this.maxLevel) return false;
+            this.level++;
+            this.totalCost += this.upgradeCost;
+            this.damage = Math.floor(this.damage * 1.8);
+            this.range += TILE_SIZE;
+            this.upgradeCost = Math.floor(this.upgradeCost * 1.8);
+            return true;
+        }
+        attack() {
+            if (this.fireCooldown > 0) {
+                this.fireCooldown--;
+                return;
+            }
+            this.findTarget();
+            if (this.target) {
+                this.fireCooldown = this.fireRate;
+                projectiles.push(new Projectile(
+                    this.x, this.y, this.target, 20, this.damage, this.color, 0, this.damageType, this.pierce
                 ));
             }
         }
@@ -1430,7 +1525,7 @@ document.addEventListener('DOMContentLoaded', () => {
     targetFastestButton.addEventListener('click', () => setSelectedTowerTargeting('fastest'));
     pauseButton.addEventListener('click', () => {
         paused = !paused;
-    pauseButton.textContent = paused ? 'Resume' : 'Pause';
+        pauseButton.textContent = paused ? 'Resume' : 'Pause';
     });
     speedButton.addEventListener('click', () => {
         timeScale = timeScale === 1 ? 2 : timeScale === 2 ? 3 : 1;
