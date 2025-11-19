@@ -885,9 +885,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (baseHealth <= 0) break;
             }
             drawAll();
-        if (baseHealth <= 0) return;
-        requestAnimationFrame(gameLoop);
+            if (baseHealth <= 0) {
+                return;
+            }
         }
+        requestAnimationFrame(gameLoop);
     }
     function applyEnemyModifiers(enemy, w, type) {
         if (!enemy || enemy.health <= 0) return;
@@ -1243,7 +1245,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (t instanceof SniperTurret) {
                 statsHTML += `Damage: ${t.damage} -> ${preview.damage}<br>
                 Range: ${(t.range/TILE_SIZE).toFixed(1)} -> ${(preview.range/TILE_SIZE).toFixed(1)} tiles<br>`;
-            }
             }
         }
         towerStatsDisplay.innerHTML = statsHTML;
