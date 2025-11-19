@@ -1595,6 +1595,7 @@ document.addEventListener('DOMContentLoaded', () => {
     buildTurretButton.addEventListener('click', () => toggleBuildMode('basic'));
     buildFrostButton.addEventListener('click', () => toggleBuildMode('frost'));
     buildBombButton.addEventListener('click', () => toggleBuildMode('bomb'));
+    buildMineButton.addEventListener('click', () => toggleBuildMode('mine'));
     canvas.addEventListener('click', handleCanvasClick);
     startWaveButton.addEventListener('click', startWave);
     upgradeTowerButton.addEventListener('click', upgradeSelectedTower);
