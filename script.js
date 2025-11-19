@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const endlessToggle = document.getElementById('endless-toggle');
     const pauseButton = document.getElementById('pause-button');
     const speedButton = document.getElementById('speed-button');
+    const pathOptions = document.getElementById('path-options');
     const targetButtons = {
         first: targetFirstButton,
         last: targetLastButton,
@@ -123,6 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
         meteor: {maxCooldown: 120 * 60, radius:  TILE_SIZE * 3, damage: 300},
         freeze: {maxCooldown: 180 * 60, duration: 5 * 60}
     };
+    const PROMOTE_COSTS = {mg: 300, sniper: 350};
     let spells = {
         meteor: {unlocked: false, cooldown: 0},
         freeze: {unlocked: false, cooldown: 0}
@@ -1051,6 +1053,16 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (tower instanceof GoldMine) {
             next.generateAmount = Math.floor(tower.generateAmount * 1.5);
             next.generateInterval = Math.max(60, Math.floor(tower.generateInterval * 0.85));
+        } else if (tower instanceof MachineGunTurret) {
+            next.damage = tower.damage + 4;
+            next.range = tower.range;
+            next.fireRate = Math.max(4, tower.fireRate - 1);
+            next.pierce = tower.pierce;
+        } else if (tower instanceof SniperTurret) {
+            next.damage = Math.floor(tower.damage * 1.8);
+            next.range = tower.range + TILE_SIZE;
+            next.fireRate = tower.fireRate;
+            next.pierce = tower.pierce;
         }
         return next;
     }
@@ -1186,6 +1198,7 @@ document.addEventListener('DOMContentLoaded', () => {
         upgradeMenuContainer.classList.remove('hidden');
         const t = selectedTower;
         const isMine = (selectedTower instanceof GoldMine);
+        const canSpecialize = (t instanceof BasicTurret) && t.level >= 3 && !t.specialization;
         let statsHTML = `
         <strong>Type:</strong> ${selectedTower.constructor.name}<br>
         <strong>Level:</strong> ${selectedTower.level} / ${selectedTower.maxLevel}<br>`;
@@ -1224,7 +1237,14 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (t instanceof GoldMine) {
                 statsHTML += `Income: ${t.generateAmount} -> ${preview.generateAmount} gold<br>
                 Interval: ${(t.generateInterval/60).toFixed(1)}s -> ${(preview.generateInterval/60).toFixed(1)}s<br>`;
-            }            
+            } else if (t instanceof MachineGunTurret) {
+                statsHTML += `Damage: ${t.damage} -> ${preview.damage}<br>
+                Fire Rate: ${(60/t.fireRate).toFixed(1)} -> ${(60/preview.fireRate).toFixed(1)}/sec<br>`;
+            } else if (t instanceof SniperTurret) {
+                statsHTML += `Damage: ${t.damage} -> ${preview.damage}<br>
+                Range: ${(t.range/TILE_SIZE).toFixed(1)} -> ${(preview.range/TILE_SIZE).toFixed(1)} tiles<br>`;
+            }
+            }
         }
         towerStatsDisplay.innerHTML = statsHTML;
         sellTowerButton.textContent = `Sell (${selectedTower.getSellValue()}G)`;
@@ -1237,6 +1257,74 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         document.getElementById('targeting-section').style.display = isMine ? 'none' : 'flex';
         if (!isMine) updateTargetingUI();
+        if (canSpecialize) {
+            upgradeTowerButton.disabled = true;
+            upgradeTowerButton.textContent = 'Choose an Upgrade Path below';
+            renderPathOptions();
+            pathOptions.classList.remove('hidden');
+        } else {
+            pathOptions.classList.add('hidden');
+            if (t.level >= t.maxLevel) {
+                upgradeTowerButton.disabled = true;
+                upgradeTowerButton.textContent = 'Max level';
+            } else {
+                upgradeTowerButton.disabled = false;
+            }
+        }
+    }
+    function renderPathOptions() {
+        if (!pathOptions || !selectedTower || !(selectedTower instanceof BasicTurret)) return;
+        const t = selectedTower;
+        const mgDps = (60 / 8 * 12).toFixed(0);
+        const snDps = (60 / 90 * 120).toFixed(0);
+        const mgRangeTiles = (t.range / TILE_SIZE).toFixed(1);
+        const snRangeTiles = ((t.range + TILE_SIZE * 2) / TILE_SIZE).toFixed(1);
+        const previews = document.getElementById('path-previews');
+        if (!previews) return;
+        previews.innerHTML = `
+            <button id="promote-mg-button" class="path-button" title="Very fast, lower damage" style="flex:1; min-width:220px;">
+                <strong>Machine Gun</strong> (${PROMOTE_COSTS.mg}G)<br>
+                Range: ${mgRangeTiles} tiles<br>
+                Fire Rate: ${(60/8).toFixed(1)}/sec, Dmg: 12<br>
+                Est. DPS: ${mgDps}
+            </button>
+            <button id="promote-sniper-button" class="path-button" title="Very slow, high damage, long-range" style="flex:1; min-width:220px;">
+                <strong>Sniper</strong> (${PROMOTE_COSTS.sniper}G)<br>
+                Range: ${snRangeTiles} tiles<br>
+                Fire Rate: ${(60/90).toFixed(1)}/sec, Dmg: 120<br>
+                Est. DPS: ${snDps}
+            </button>
+        `;
+        const mgButton = document.getElementById('promote-mg-button');
+        const snButton = document.getElementById('promote-sniper-button');
+        mgButton?.addEventListener('click', () => promoteBasicTo('mg'));
+        snButton?.addEventListener('click', () => promoteBasicTo('sniper'));
+    }
+    function promoteBasicTo(path) {
+        if (!selectedTower || !(selectedTower instanceof BasicTurret) || selectedTower.level < 3) return;
+        const cost = path === 'mg' ? PROMOTE_COSTS.mg : PROMOTE_COSTS.sniper;
+        if (gold < cost) {
+            showGlobalMessage("Not enough gold to specialize");
+            return;
+        }
+        const from = selectedTower;
+        gold -= cost;
+        let newTower = null;
+        if (path === 'mg') {
+            newTower = new MachineGunTurret(from.x, from.y, from);
+        } else {
+            newTower = new SniperTurret(from.x, from.y, from);
+        }
+        newTower.targeting = from.targeting;
+        newTower.totalCost += cost;
+        const idx = towers.indexOf(from);
+        if (idx >= 0) {
+            towers[idx] = newTower;
+        }
+        selectedTower = newTower;
+        updateUI();
+        showGlobalMessage(`Promoted to ${path === 'mg' ? 'Machine Gun' : 'Sniper'}!`);
+        showUpgradeUI();
     }
     function updateTargetingUI() {
         Object.values(targetButtons).forEach(button => button && button.classList.remove('selected'));
