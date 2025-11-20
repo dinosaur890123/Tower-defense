@@ -327,6 +327,32 @@ document.addEventListener('DOMContentLoaded', () => {
             super(baseHP, 2.2 + wave * 0.06, 1, 4, '#cbcb39ff', TILE_SIZE * 0.35);
         }
     }
+    class SplitterEnemy extends Enemy {
+        constructor(wave) {
+            const baseHP = 180 + wave * 25;
+            super(baseHP, 0.7 + wave * 0.02, 15, 20, 'purple', TILE_SIZE * 0.9);
+            this.wave = wave;
+        }
+        takeDamage(amount, damageType = 'generic') {
+            const wasAlive = this.health > 0;
+            super.takeDamage(amount, damageType);
+            if (wasAlive && this.health <= 0) {
+                for (let i = 0; i < 3; i++) {
+                    const child = new SplitterSpawn(this.wave, this.pathIndex, this.x, this.y);
+                    enemies.push(child);
+                }
+            }
+        }
+    }
+    class SplitterSpawn extends Enemy {
+        constructor(wave, pathIndex, x, y) {
+            const hp = 40 + wave * 5;
+            super(hp, 1.8 + wave * 0.05, 2, 5, '#da70d6', TILE_SIZE * 0.4);
+            this.pathIndex = pathIndex;
+            this.x = x + (Math.random() * 20 - 10);
+            this.y = y + (Math.random() * 20 - 10);
+        }
+    }
     class BossEnemy extends Enemy {
         constructor(wave) {
             const hp = 2500 + wave * 220;
@@ -1375,6 +1401,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     case 'runner': enemy = new RunnerEnemy(); break;
                     case 'brute': enemy = new BruteEnemy(); break;
                     case 'drone': enemy = new RegenEnemy(wave); break;
+                    case 'splitter': enemy = new SplitterEnemy(wave); break;
                     case 'swarm': enemy = new SwarmEnemy(wave); break;
                     case 'boss': enemy = new BossEnemy(wave); break;
                     case 'shield': enemy = new ShieldedEnemy(wave); break;
@@ -1437,6 +1464,13 @@ document.addEventListener('DOMContentLoaded', () => {
             f.y += f.vy;
             f.alpha -= 0.02;
             if (f.alpha <= 0) floaters.splice(i, 1);
+        }
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            const enemy = enemies[i];
+            enemy.move();
+            if (enemy.health <= 0) {
+                enemies.splice(i, 1);
+            }
         }
         updateSpells();
         if (baseHealth <= 0) {
