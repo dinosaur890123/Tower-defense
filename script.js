@@ -41,6 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const endlessToggle = document.getElementById('endless-toggle');
     const pauseButton = document.getElementById('pause-button');
     const speedButton = document.getElementById('speed-button');
+    const knowledgePointsDisplay = document.getElementById('knowledge-points-display');
+    const knowledgeUpgradesContainer = document.getElementById('knowledge-upgrades');
     const pathOptions = document.getElementById('path-options');
     const targetButtons = {
         first: targetFirstButton,
@@ -60,6 +62,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const MINE_COST = 200;
     const INTEREST_RATE = 0.10;
     const MAX_INTEREST = 50;
+    let INTEREST_RATE_BASE = 0.10;
+    let MAX_INTEREST_BASE = 50;
+    let GLOBAL_RANGE_MULT = 1;
+    let BASIC_CAMO_LEVEL = 2;
+    let knowledgePoints = 0;
+    let purchasedUpgrades = {};
+    const KNOWLEDGE_UPGRADES = {
+        startGold1: {cost: 5, apply:(map)=> map.startGold += 20, once:true, desc:'+20 Starting Gold'},
+        startHealth1: {cost: 5, apply:(map)=> map.startHealth += 20, once:true, desc:'+20 Base Health'},
+        interest1: {cost: 8, apply:()=> {INTEREST_RATE_BASE += 0.02; MAX_INTEREST_BASE += 10;}, once:true, desc:'+2% Interest & +10 Cap'},
+        towertowerRange1: {cost:10, apply:()=> {GLOBAL_RANGE_MULT *= 1.05; boostExistingRanges(1.05);}, once:true, desc:'+5% Tower Range'},
+        camoEarly: {cost:12, apply:()=> {BASIC_CAMO_LEVEL = 1;}, once:true, desc:'Basic tower camo at L1'}
+    };
     const maps = {
         easy: {
             path: [
@@ -192,6 +207,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function createFloatingText(x, y, text, color = '#ffffff', size = 12) {
         floaters.push ({x, y, text, color, size, alpha: 1, vy: -0.8, life: 40});
+    }
+    function boostExistingRanges(mult) {
+        for (const t of towers) {
+            t.range *= mult;
+        }
+    }
+    function saveKnowledge() {
+        localStorage.setItem('td_knowledge_points', knowledgePoints.toString());
+        localStorage.setItem('td_knowledge_upgrades', JSON.stringify(purchasedUpgrades));
+    }
+    function loadKnowledge() {
+        const kp = localStorage.getItem('td_knowledge_points');
+        if (kp) knowledgePoints = parseInt(kp);
+        const up = localStorage.getItem('td_knowledge_upgrades');
+        if (up) purchasedUpgrades = JSON.parse(up) || {};
+        updateKnowledgeUI();
+    }
+    function updateKnowledgeUI() {
+        if (knowledgePointsDisplay) {
+            knowledgePointsDisplay.textContent = `Knowledge: ${knowledgePoints}`;
+        }
+        if (!knowledgeUpgradesContainer) return;
+        [...knowledgeUpgradesContainer.querySelectorAll('button')].forEach(button => {
+            const id = button.dataset.up;
+            const def = KNOWLEDGE_UPGRADES[id];
+            if (!def) return;
+            if (purchasedUpgrades[id]) {
+                button.disabled = true;
+                button.textContent = `${def.desc} (Purchased)`;
+            } else {
+                button.disabled = knowledgePoints < def.cost;
+            }
+        });
+    }
+    function purchaseKnowledgeUpgrade(id) {
+        const up = KNOWLEDGE_UPGRADES[id];
+        if (!up || purchasedUpgrades[id]) return;
+        if (knowledgePoints < up.cost) return;
+        knowledgePoints -= up.cost;
+        purchasedUpgrades[id] = true;
+        if (up.apply && up.apply.length === 0) {
+            up.apply();
+        }
+        saveKnowledge();
+        updateKnowledgeUI();
     }
     class Enemy {
         constructor(health, speed, goldValue = 5, baseDamage = 10, color = 'red', size = TILE_SIZE * 0.6, opts = {}) {
@@ -1040,6 +1100,7 @@ document.addEventListener('DOMContentLoaded', () => {
         baseHealthDisplay.textContent = baseHealth;
         goldDisplay.textContent = gold;
         waveDisplay.textContent = wave;
+        updateKnowledgeUI();
     }
     function getWaveComposition(w) {
         if (w <= 0) return [];
@@ -1470,7 +1531,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 switch (enemyType) {
                     case 'runner': enemy = new RunnerEnemy(); break;
                     case 'brute': enemy = new BruteEnemy(); break;
-                    case 'drone': enemy = new RegenEnemy(wave); break;
+                    case 'drone': enemy = new DroneEnemy(wave); break;
+                    case 'regen': enemy = new RegenEnemy(wave); break;
                     case 'splitter': enemy = new SplitterEnemy(wave); break;
                     case 'swarm': enemy = new SwarmEnemy(wave); break;
                     case 'boss': enemy = new BossEnemy(wave); break;
@@ -1499,6 +1561,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 showGlobalMessage(`+${interestEarned}gold Interest!`, 'interest');
             }
             gold += 50 + wave * 10;
+            const gainedKnowledge = Math.ceil(wave / 2) + (wave % 5 === 0 ? 5 : 0);
+            knowledgePoints += gainedKnowledge;
+            saveKnowledge();
             updateUI();
             if (wave === 3 && !spells.meteor.unlocked) {
                 spells.meteor.unlocked = true;
@@ -1691,6 +1756,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function initGame(difficulty) {
         const mapData = maps[difficulty];
+        for (k in purchasedUpgrades) {
+            const def = KNOWLEDGE_UPGRADES[k];
+            if (def && def.apply && def.apply.length === 1) {
+                def.apply(mapData);
+            }
+        }
         path = mapData.path;
         baseHealth = mapData.startHealth;
         gold = mapData.startGold;
@@ -1746,5 +1817,11 @@ document.addEventListener('DOMContentLoaded', () => {
             startWaveButton.textContent = 'Endless: next wave...';
         }
     });
+    knowledgeUpgradesContainer?.addEventListener('click', (e) => {
+        const button = e.target.closest('button[data-up]');
+        if (!button) return;
+        purchaseKnowledgeUpgrade(button.dataset.up);
+    });
+    loadKnowledge();
     showBuildUI();
 });

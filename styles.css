@@ -219,3 +219,17 @@ button:disabled {
     background-color: #7a7aff;
     box-shadow: 0 0 8px #7a7aff;
 }
+#knowledge-panel-button {
+    background:#37376c;
+    padding: 8px 10px;
+    font-size: 0.75rem;
+    flex: 1 1 160px;
+}
+#knowledge-panel button:hover {
+    background:#5a5a9e;
+}
+#knowledge-panel button:disabled {
+    background:#2d2d48;
+    color:#767373;
+    cursor: not-allowed;
+}

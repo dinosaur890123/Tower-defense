@@ -11,6 +11,16 @@
         <h1>Tower Defense</h1>
         <div id="map-selection-screen">
             <h2>Select a map</h2>
+            <div id="knowledge-panel" style="margin:15px auto 25px; max-width:560px; background:#242442; border:1px solid #4a4a7e; padding:12px; border-radius:8px;">
+                <h2 style="margin:4px 0 10px;">Knowledge (Meta Progression)</h2>
+                <div id="knowledge-points-display" style="margin-bottom:8px; font-weight: bold;">Knowledge: 0</div>
+                <div id="knowledge-upgrades" style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center;"></div>
+                <button data-up="startGold1">+20 Starting Gold (Cost: 5)</button>
+                <button data-up="startHealth1">+20 Base Health (Cost: 5)</button>
+                <button data-up="interest1">+2% Interest & +10 Cap (Cost: 8)</button>
+                <button data-up="towerRange1">All Towers +5% Range</button>
+                <button data-up="camoEarly">Basic Tower Camo at L1 (Cost: 12)</button>
+            </div>
             <div id="map-selection-buttons">
                 <button id="map-easy-button" class="map-button">
                     <strong>Green Valley (Easy)</strong>
