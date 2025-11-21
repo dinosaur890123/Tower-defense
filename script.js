@@ -120,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let endlessMode = false;
     let paused = false;
     let timeScale = 1;
+    let particles = [];
     const SPELL_COSTS = {
         meteor: {maxCooldown: 120 * 60, radius:  TILE_SIZE * 3, damage: 300},
         freeze: {maxCooldown: 180 * 60, duration: 5 * 60}
@@ -129,7 +130,46 @@ document.addEventListener('DOMContentLoaded', () => {
         meteor: {unlocked: false, cooldown: 0},
         freeze: {unlocked: false, cooldown: 0}
     };
-    
+    class Particle {
+        constructor(x, y, color, size, speed, life) {
+            this.x = x;
+            this.y = y;
+             const angle = Math.random() * Math.PI * 2;
+            const velocity = Math.random() * speed;
+            this.vx = Math.cos(angle) * velocity;
+            this.vy = Math.sin(angle) * velocity;
+            this.color = color;
+            this.size = size;
+            this.life = life;
+            this.maxLife = life;
+        }
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.life--;
+        }
+        draw(ctx) {
+            ctx.globalAlpha = this.life / this.maxLife;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+    }
+    function createHitEffect(x, y, color) {
+        for (let i = 0; i < 4; i++) {
+            particles.push(new Particle(x, y, color, Math.random() * 2 + 1, 2, 15));
+        }
+    }
+    function createDeathEffect(x, y, color) {
+        for (let i = 0; i < 12; i++) {
+            particles.push(new Particle(x, y, color, Math.random() * 3 + 2, 3, 30));
+        }
+    }
+    function createFloatingText(x, y, text, color = '#ffffff', size = 12) {
+        floaters.push ({x, y, text, color, size, alpha: 1, vy: -0.8, life: 40});
+    }
     class Enemy {
         constructor(health, speed, goldValue = 5, baseDamage = 10, color = 'red', size = TILE_SIZE * 0.6, opts = {}) {
             this.x = path[0].x * TILE_SIZE + TILE_SIZE / 2;
@@ -172,7 +212,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const effective = Math.max(1, Math.floor(amount - armorVal));
             this.health -= effective;
+            createFloatingText(this.x + (Math.random() * 10 - 5), this.y - 10, Math.floor(effective), '#ffffff', 12);
+            createHitEffect(this.x, this.y, this.color);
             if (this.health <= 0) {
+                createDeathEffect(this.x, this.y, this.color);
                 gold += this.goldValue;
                 updateUI();
             }
@@ -488,6 +531,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     timer: 10,
                     color: 'rgba(255, 165, 0, 0.5)'
                 });
+                for(let i=0; i<15; i++) {
+                    particles.push(new Particle(this.targetX, this.targetY, 'orange', Math.random()*3+2, 5, 25));
+                }
                 for (const enemy of enemies) {
                     if (enemy.isFlying) continue;
                     const dx= enemy.x - this.targetX;
@@ -504,6 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.distTraveled += this.speed;
             return true;
         }
+
         draw() {
             const halfDist = this.distTotal / 2;
             const currentHeight = (this.distTraveled - halfDist) * (this.distTraveled - halfDist);
@@ -1472,6 +1519,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 enemies.splice(i, 1);
             }
         }
+        updateParticles();
         updateSpells();
         if (baseHealth <= 0) {
             baseHealth = 0;
@@ -1494,6 +1542,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < enemies.length; i++) {
             enemies[i].draw();
         }
+        drawParticles();
         for (let i = 0; i < explosions.length; i++) {
             const exp = explosions[i];
             ctx.fillStyle = exp.color;
@@ -1527,6 +1576,18 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2);
+        }
+    }
+    function updateParticles() {
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.update();
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+    }
+    function drawParticles() {
+        for (const p of particles) {
+            p.draw(ctx);
         }
     }
     function updateSpells() {
