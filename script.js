@@ -121,6 +121,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let paused = false;
     let timeScale = 1;
     let particles = [];
+    const MAX_PARTICLES = 800;
+    const GRAVITY = 0.06;
+    const SIZE_DAMPING = 0.96;
     const SPELL_COSTS = {
         meteor: {maxCooldown: 120 * 60, radius:  TILE_SIZE * 3, damage: 300},
         freeze: {maxCooldown: 180 * 60, duration: 5 * 60}
@@ -134,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
         constructor(x, y, color, size, speed, life) {
             this.x = x;
             this.y = y;
-             const angle = Math.random() * Math.PI * 2;
+            const angle = Math.random() * Math.PI * 2;
             const velocity = Math.random() * speed;
             this.vx = Math.cos(angle) * velocity;
             this.vy = Math.sin(angle) * velocity;
@@ -144,8 +147,10 @@ document.addEventListener('DOMContentLoaded', () => {
             this.maxLife = life;
         }
         update() {
+            this.vy += GRAVITY;
             this.x += this.vx;
             this.y += this.vy;
+            this.size *= SIZE_DAMPING;
             this.life--;
         }
         draw(ctx) {
@@ -156,6 +161,24 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.fill();
             ctx.globalAlpha = 1;
         }
+    }
+    function addParticle(p) {
+        if (particles.length >= MAX_PARTICLES) {
+            particles.shift();
+        }
+        particles.push(p);
+    }
+    function jitterColor(base) {
+        if (!/^#?[0-9a-fA-F]{6}$/.test(base.replace('#',''))) return base;
+        let hex = base.replace('#','');
+        const r = parseInt(hex.slice(0,2),16);
+        const g = parseInt(hex.slice(2,4),16);
+        const b = parseInt(hex.slice(4,6),16);
+        const factor = 0.85 + Math.random()*0.3;
+        const nr = Math.min(255, Math.max(0, Math.round(r * factor)));
+        const ng = Math.min(255, Math.max(0, Math.round(g * factor)));
+        const nb = Math.min(255, Math.max(0, Math.round(b * factor)));
+        return `rgba(${nr},${ng},${nb},1)`;
     }
     function createHitEffect(x, y, color) {
         for (let i = 0; i < 4; i++) {
