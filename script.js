@@ -66,13 +66,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let MAX_INTEREST_BASE = 50;
     let GLOBAL_RANGE_MULT = 1;
     let BASIC_CAMO_LEVEL = 2;
+    const DATA_VERSION = 1;
     let knowledgePoints = 0;
     let purchasedUpgrades = {};
     const KNOWLEDGE_UPGRADES = {
         startGold1: {cost: 5, apply:(map)=> map.startGold += 20, once:true, desc:'+20 Starting Gold'},
         startHealth1: {cost: 5, apply:(map)=> map.startHealth += 20, once:true, desc:'+20 Base Health'},
-        interest1: {cost: 8, apply:()=> {INTEREST_RATE_BASE += 0.02; MAX_INTEREST_BASE += 10;}, once:true, desc:'+2% Interest & +10 Cap'},
-        towertowerRange1: {cost:10, apply:()=> {GLOBAL_RANGE_MULT *= 1.05; boostExistingRanges(1.05);}, once:true, desc:'+5% Tower Range'},
+        interest1: {cost: 8, apply:()=> {INTEREST_RATE_BASE += 0.02; MAX_INTEREST_BASE += 10;}, once:true, desc:'+2% Interest & +10 Cap', scope: 'global'},
+        towerRange1: {cost:10, apply:()=> {if (GLOBAL_RANGE_MULT < 1.20){ GLOBAL_RANGE_MULT = +(GLOBAL_RANGE_MULT * 1.05).toFixed(4); boostExistingRanges(1.05);} }, once:true, desc:'+5% Tower Range', scope:'global'},
         camoEarly: {cost:12, apply:()=> {BASIC_CAMO_LEVEL = 1;}, once:true, desc:'Basic tower camo at L1'}
     };
     const maps = {
@@ -210,18 +211,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function boostExistingRanges(mult) {
         for (const t of towers) {
-            t.range *= mult;
+            if (t.range > 0) t.range *= mult;
         }
     }
     function saveKnowledge() {
-        localStorage.setItem('td_knowledge_points', knowledgePoints.toString());
-        localStorage.setItem('td_knowledge_upgrades', JSON.stringify(purchasedUpgrades));
+        try {
+            localStorage.setItem('td_version', DATA_VERSION.toString());
+            localStorage.setItem('td_knowledge_points', knowledgePoints.toString());
+            localStorage.setItem('td_knowledge_upgrades', JSON.stringify(purchasedUpgrades));
+        } catch (e) {
+            console.warn('Failed to save knowledge:', e);
+        }
+        
     }
     function loadKnowledge() {
-        const kp = localStorage.getItem('td_knowledge_points');
-        if (kp) knowledgePoints = parseInt(kp);
-        const up = localStorage.getItem('td_knowledge_upgrades');
-        if (up) purchasedUpgrades = JSON.parse(up) || {};
+        try {
+            const ver = parseInt(localStorage.getItem('td_version') || '1');
+            const kpStr = localStorage.getItem('td_knowledge_points');
+            const upStr = localStorage.getItem('td_knowledge_upgrades');
+            if (kpStr) {
+                const kpVal = parseInt(kpStr);
+                if (!isNaN(kpVal) && kpVal >= 0) knowledgePoints = kpVal;
+            }
+            if (upStr) {
+                const parsed = JSON.parse(upStr);
+                if (parsed && typeof parsed === 'object') purchasedUpgrades = parsed;
+            }
+        } catch (e) {
+            console.warn('Failed to load knowledge, resetting:', e);
+            knowledgePoints = 0;
+            purchasedUpgrades = {};
+        }
         updateKnowledgeUI();
     }
     function updateKnowledgeUI() {
@@ -247,8 +267,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (knowledgePoints < up.cost) return;
         knowledgePoints -= up.cost;
         purchasedUpgrades[id] = true;
-        if (up.apply && up.apply.length === 0) {
+        if (up.scope === 'global' && typeof up.apply === 'function') {
             up.apply();
+            INTEREST_RATE = INTEREST_RATE_BASE;
+            MAX_INTEREST = MAX_INTEREST_BASE;
+            if (id === 'towerRange1') boostExistingRanges(1.05);
+            if (id === 'camoEarly') {
+                if (t instanceof BasicTurret && t.level >= BASIC_CAMO_LEVEL) t.canDetectCamo = true;
+                if (t instanceof BasicTurret && BASIC_CAMO_LEVEL === 1) t.canDetectCamo = true;
+            }
         }
         saveKnowledge();
         updateKnowledgeUI();
@@ -786,6 +813,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             this.damage = 18;
             this.fireRate = 25;
+            if (this.level >= BASIC_CAMO_LEVEL) {
+                this.canDetectCamo = true;
+            }
         }
         upgrade() {
             if (this.level >= this.maxLevel) return false;
@@ -1758,7 +1788,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const mapData = maps[difficulty];
         for (k in purchasedUpgrades) {
             const def = KNOWLEDGE_UPGRADES[k];
-            if (def && def.apply && def.apply.length === 1) {
+            if (def && def.scope === 'map' && typeof def.apply === 'function') {
                 def.apply(mapData);
             }
         }
