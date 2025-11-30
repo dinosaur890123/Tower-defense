@@ -92,28 +92,6 @@
                 </button>
                 <div id="message-box"></div>
             </div>
-            <div id="upgrade-menu-container" class="hidden">
-                <h3 id="tower-stats-title">Tower Stats</h3>
-                <div id="tower-stats-display"></div>
-                <div id="targeting-section">
-                    <h4>Targeting</h4>
-                    <button id="target-first-button" class="target-button">First</button>
-                    <button id="target-last-button" class="target-button">Last</button>
-                    <button id="target-closest-button" class="target-button">Closest</button>
-                    <button id="target-strongest-button" class="target-button">Strongest</button>
-                    <button id="target-weakest-button" class="target-button">Weakest</button>
-                    <button id="target-fastest-button" class="target-button">Fastest</button>
-                </div>
-                <div id="path-options" class="hidden" style="margin:8px">
-                    <h4>Specialise</h4>
-                    <div id="path-previews" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
-                </div>
-                <div id="upgrade-options">
-                    <button id="upgrade-tower-button">Upgrade (100 Gold)</button>
-                </div>
-                <button id="sell-tower-button" class="sell-button">Sell (75 Gold)</button>
-                <button id="deselect-tower-button">Close</button>
-            </div>
             <div id="spell-container">
                 <button id="meteor-strike-button" class="spell-button hidden">
                     <div class="spell-text">Meteor (120s)</div>
@@ -125,6 +103,22 @@
                     <div class="cooldown-overlay"></div>
                     <div class="cooldown-text"></div>
                 </button>
+            </div>
+            <div id="overlay" class="hidden">
+                <div id="overlay-content">
+                    <button id="overlay-close" title="Close">✕</button>
+                    <h3 id="tower-stats-title">Tower Stats</h3>
+                    <div id="tower-stats-display"></div>
+                    <div id="targeting-section">
+                        <h4>Targeting</h4>
+                        <button id="target-first-button" class="target-button">First</button>
+                        <button id="target-last-button" class="target-button">Last</button>
+                        <button id="target-closest-button" class="target-button">Closest</button>
+                        <button id="target-strongest-button" class="target-button">Strongest</button>
+                        <button id="target-weakest-button" class="target-button">Weakest</button>
+                        <button id="target-fastest-button" class="target-button">Fastest</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

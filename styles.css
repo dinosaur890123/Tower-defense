@@ -255,3 +255,43 @@ button:disabled {
 #initial-start-screen #how-to-button:hover {
     background:#5a5a9e;
 }
+#overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+#overlay.hidden {
+    display: none;
+}
+#overlay-content {
+    width: 520px;
+    max-width: 90vw;
+    max-height: 85vh;
+    overflow: auto;
+    background: #242442;
+    border: 1px solid #4a4a7e;
+    border-radius: 10px;
+    padding: 16px 16px 18px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+#overlay-content h3 {
+    text-align: center;
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+}
+#overlay-close {
+    position: absolute;
+    margin-left: calc(520px - 40px);
+    background: #3a3a6e;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 6px;
+}
+#overlay-close:hover { 
+    background:#5a5a9e;
+}

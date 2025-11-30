@@ -57,6 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
         weakest: targetWeakestButton,
         fastest: targetFastestButton,
     };
+    const overlay = document.getElementById('overlay');
+    const overlayClose = document.getElementById('overlay-close');
     const buildButtons = [buildTurretButton, buildFrostButton, buildBombButton, buildMineButton];
     const TILE_SIZE = 40;
     const MAP_COLS = canvas.width / TILE_SIZE;
@@ -1394,14 +1396,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function showUpgradeUI() {
         if (!selectedTower) return;
+        overlay.classList.remove('hidden');
         buildMenuContainer.classList.add('hidden');
-        upgradeMenuContainer.classList.remove('hidden');
         const t = selectedTower;
         const isMine = (selectedTower instanceof GoldMine);
         const canSpecialize = (t instanceof BasicTurret) && t.level >= 3 && !t.specialization;
         let statsHTML = `
         <strong>Type:</strong> ${selectedTower.constructor.name}<br>
         <strong>Level:</strong> ${selectedTower.level} / ${selectedTower.maxLevel}<br>`;
+        statsHTML += `<em style="color:#cfcfe6;">${getTowerRoleDescription(selectedTower)}</em><br>`;
         if (isMine) {
             statsHTML += `
         <strong>Income:</strong> ${selectedTower.generateAmount}G / ${(selectedTower.generateInterval/60).toFixed(1)}s<br>`;
@@ -1539,10 +1542,19 @@ document.addEventListener('DOMContentLoaded', () => {
         showUpgradeUI();
     }
     function showBuildUI() {
-    selectedTower = null;
-    if (buildMenuContainer) buildMenuContainer.classList.remove('hidden');
-    if (upgradeMenuContainer) upgradeMenuContainer.classList.add('hidden');
-    cancelSpellMode();
+        selectedTower = null;
+        buildMenuContainer?.classList.remove('hidden');
+        overlay?.classList.add('hidden');
+        cancelSpellMode();
+    }
+    function getTowerRoleDescription(tower) {
+        if (tower instanceof BasicTurret) return 'Versatile single-target shooter. Upgrades improve damage, rate, camo, and pierce.';
+        if (tower instanceof MachineGunTurret) return 'Specialised: very fast attacks, consistent DPS, good at cleaning up.';
+        if (tower instanceof SniperTurret) return 'Specialised: long-range, high burst damage. Great vs brutes/shields.';
+        if (tower instanceof FrostTurret) return 'Applies slow and minor damage. Excellent support to extend kill windows.';
+        if (tower instanceof BombTurret) return 'Ground-only splash damage. Strong vs groups and swarm types.';
+        if (tower instanceof GoldMine) return 'Generates gold over time. Scales with upgrades, no attack.';
+        return 'Tower providing defense along the path.';
     }
     function upgradeSelectedTower() {
         if (!selectedTower) return;
@@ -1873,6 +1885,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!button) return;
         purchaseKnowledgeUpgrade(button.dataset.up);
     });
+    overlayClose?.addEventListener('click', showBuildUI);
+    deselectTowerButton.addEventListener('click', showBuildUI);
     loadKnowledge();
     showBuildUI();
 });
