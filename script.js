@@ -278,8 +278,14 @@ document.addEventListener('DOMContentLoaded', () => {
             MAX_INTEREST = MAX_INTEREST_BASE;
             if (id === 'towerRange1') boostExistingRanges(1.05);
             if (id === 'camoEarly') {
-                if (t instanceof BasicTurret && t.level >= BASIC_CAMO_LEVEL) t.canDetectCamo = true;
-                if (t instanceof BasicTurret && BASIC_CAMO_LEVEL === 1) t.canDetectCamo = true;
+                for (const tw of towers) {
+                    if (tw.level >= BASIC_CAMO_LEVEL) {
+                        tw.canDetectCamo = true;
+                    }
+                    if (BASIC_CAMO_LEVEL === 1) {
+                        tw.canDetectCamo = true;
+                    }
+                }
             }
         }
         saveKnowledge();
@@ -1791,9 +1797,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function initGame(difficulty) {
         const mapData = maps[difficulty];
-        for (k in purchasedUpgrades) {
+        for (const k in purchasedUpgrades) {
             const def = KNOWLEDGE_UPGRADES[k];
-            if (def && def.scope === 'map' && typeof def.apply === 'function') {
+            if (def && def.scope !== 'global' && typeof def.apply === 'function') {
                 def.apply(mapData);
             }
         }
