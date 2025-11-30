@@ -1416,6 +1416,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <strong>Can Hit Flying:</strong> ${t.canHitFlying ? 'Yes' : 'No'}<br>
         <strong>Can Hit Ground:</strong> ${t.canHitGround ? 'Yes' : 'No'}<br>
         <strong>Targeting:</strong>  ${selectedTower.targeting.charAt(0).toUpperCase() + selectedTower.targeting.slice(1)}<br>`;
+        }
         const preview = getNextLevelPreview(t);
         if (preview) {
             statsHTML += `<hr style="border:0;border-top:1px solid #5b5757ff;margin:6px 0;">
