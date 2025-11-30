@@ -44,6 +44,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const knowledgePointsDisplay = document.getElementById('knowledge-points-display');
     const knowledgeUpgradesContainer = document.getElementById('knowledge-upgrades');
     const pathOptions = document.getElementById('path-options');
+    const initialStartScreen = document.getElementById('initial-start-screen');
+    const playButton = document.getElementById('play-button');
+    const howToButton = document.getElementById('how-to-button');
+    const howToPanel = document.getElementById('how-to-panel');
+    const mainTitle = document.getElementById('main-title');
     const targetButtons = {
         first: targetFirstButton,
         last: targetLastButton,
@@ -1835,6 +1840,14 @@ document.addEventListener('DOMContentLoaded', () => {
     pauseButton.addEventListener('click', () => {
         paused = !paused;
         pauseButton.textContent = paused ? 'Resume' : 'Pause';
+    });
+    playButton.addEventListener('click', () => {
+        initialStartScreen.classList.add('hidden');
+        mainTitle.classList.remove('hidden');
+        mapSelectionScreen.classList.remove('hidden');
+    });
+    howToButton.addEventListener('click', () => {
+        howToPanel.classList.toggle('hidden');
     });
     speedButton.addEventListener('click', () => {
         timeScale = timeScale === 1 ? 2 : timeScale === 2 ? 3 : 1;

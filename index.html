@@ -8,7 +8,23 @@
 </head>
 <body>
     <div id="game-container">
-        <h1>Tower Defense</h1>
+        <div id="initial-start-screen">
+            <h1 style="margin-top:0;">Tower Defense</h1>
+            <p style="max-width:520px; margin:12px auto 24px; line-height:1.4;">
+                Defend your base, earn gold, unlock knowledge upgrades and survive for as long as you can.
+            </p>
+            <button id="play-button" style="max-width:240px; margin:0 auto; display:block; font-size:1.1rem;">
+                Play
+            </button>
+            <button id="how-to-button" style="max-width:240px;margin:14px auto 0;display:block;font-size:0.85rem;">
+                How to play
+            </button>
+            <div id="how-to-panel" class="hidden" style="max-width:620px;margin:18px auto 0;font-size:0.85rem; background:#242442; padding:14px 16px; border:1px solid #4a4a7e; border-radius:8px;">
+                Build towers on non-path tiles. Start waves to earn gold and knowledge. Upgrade towers specialise Basic at level 3.
+                Meteor unlocks wave 3, Freeze wave 7. Endless auto-starts waves. Interest paid after each wave, so only use whats needed
+            </div>
+        </div>
+        <h1 class="hidden" id="main-title">Tower Defense</h1>
         <div id="map-selection-screen">
             <h2>Select a map</h2>
             <div id="knowledge-panel" style="margin:15px auto 25px; max-width:560px; background:#242442; border:1px solid #4a4a7e; padding:12px; border-radius:8px;">
