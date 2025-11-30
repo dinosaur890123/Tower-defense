@@ -1677,7 +1677,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const exp = explosions[i];
             ctx.fillStyle = exp.color;
             ctx.beginPath();
-            ctx.arc(exp.x, exp.y, exp.radius * (1 - exp.timer / 10), 0, Math.PI * 2);
+            const radius = Math.max(0, exp.radius * (1 - exp.timer / 10));
+            ctx.arc(exp.x, exp.y, radius, 0, Math.PI * 2);
             ctx.fill();
         }
         for (let i = 0; i < floaters.length; i++) {
