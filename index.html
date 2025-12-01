@@ -110,6 +110,15 @@
                     <button id="overlay-close" title="Close">✕</button>
                     <h3 id="tower-stats-title">Tower Stats</h3>
                     <div id="tower-stats-display"></div>
+                    <div id="tower-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin:8px 0;">
+                        <button id="upgrade-tower-button" class="tower-action-button">Upgrade</button>
+                        <button id="sell-tower-button" class="tower-action-button">Sell</button>
+                        <button id="deselect-tower-button" class="tower-action-button" title="Return to build menu">Deselect</button>
+                    </div>
+                    <div id="path-options" class="hidden" style="margin:6px 0 10px; background:#242442; border:1px solid #4a4a7e; padding:8px; border-radius:6px;">
+                        <h4 style="margin:4px 0 8px;">Specialization Paths</h4>
+                        <div id="path-previews" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+                    </div>
                     <div id="targeting-section">
                         <h4>Targeting</h4>
                         <button id="target-first-button" class="target-button">First</button>
