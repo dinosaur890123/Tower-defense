@@ -295,3 +295,8 @@ button:disabled {
 #overlay-close:hover { 
     background:#5a5a9e;
 }
+.wave-preview {
+    line-height: 1.2;
+    text-align: left;
+    color:#d9d9ff;
+}

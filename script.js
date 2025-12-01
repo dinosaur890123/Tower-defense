@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const howToButton = document.getElementById('how-to-button');
     const howToPanel = document.getElementById('how-to-panel');
     const mainTitle = document.getElementById('main-title');
+    const wavePreview = document.getElementById('wave-preview');
     const targetButtons = {
         first: targetFirstButton,
         last: targetLastButton,
@@ -1332,6 +1333,7 @@ document.addEventListener('DOMContentLoaded', () => {
         enemiesToSpawn = getWaveComposition(wave);
         waveSpawnTimer = 0;
         updateUI();
+        renderWavePreview();
         startWaveButton.disabled = true;
         startWaveButton.textContent = 'Wave in progress...';
     }
@@ -1475,6 +1477,35 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+    function renderWavePreview() {
+        if (!wavePreview) return;
+        if (waveInProgress) {
+            wavePreview.textContent = 'Wave in progress...';
+            return;
+        }
+        const nextWave = wave + 1;
+        const comp = getWaveComposition(nextWave);
+        if (!comp || comp.length === 0) {
+            wavePreview.textContent = '';
+            return;
+        }
+        const counts = {};
+        comp.forEach(t => counts[t] = (counts[t] || 0) + 1);
+        const names = {
+            basic: 'Basic',
+            runner: 'Runner',
+            brute: 'Brute',
+            shield: 'Shield',
+            drone: 'Drone',
+            regen: 'Regen',
+            swarm: 'Swarm',
+            boss: 'Boss'
+        };
+        const summary = Object.entries(counts)
+            .map(([k, v]) => `${names[k] || k}×${v}`)
+            .join(', ');
+        wavePreview.innerHTML = `<strong>Next Wave ${nextWave}:</strong> ${summary}`;
+    }
     function renderPathOptions() {
         if (!pathOptions || !selectedTower || !(selectedTower instanceof BasicTurret)) return;
         const t = selectedTower;
@@ -1607,18 +1638,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (waveSpawnTimer > 0) waveSpawnTimer--;
             if (enemiesToSpawn.length === 0 && enemies.length === 0) {
                 waveInProgress = false;
-            startWaveButton.disabled = false;
-            startWaveButton.textContent = 'Start next wave!';
-            const interestEarned = Math.min(Math.floor(gold * INTEREST_RATE), MAX_INTEREST);
-            if (interestEarned > 0) {
-                gold += interestEarned;
-                showGlobalMessage(`+${interestEarned}gold Interest!`, 'interest');
-            }
-            gold += 50 + wave * 10;
-            const gainedKnowledge = Math.ceil(wave / 2) + (wave % 5 === 0 ? 5 : 0);
-            knowledgePoints += gainedKnowledge;
-            saveKnowledge();
-            updateUI();
+                startWaveButton.disabled = false;
+                startWaveButton.textContent = 'Start next wave!';
+                const interestEarned = Math.min(Math.floor(gold * INTEREST_RATE), MAX_INTEREST);
+                if (interestEarned > 0) {
+                    gold += interestEarned;
+                    showGlobalMessage(`+${interestEarned}gold Interest!`, 'interest');
+                }
+                gold += 50 + wave * 10;
+                const gainedKnowledge = Math.ceil(wave / 2) + (wave % 5 === 0 ? 5 : 0);
+                knowledgePoints += gainedKnowledge;
+                saveKnowledge();
+                updateUI();
+                renderWavePreview();
             if (wave === 3 && !spells.meteor.unlocked) {
                 spells.meteor.unlocked = true;
                 showGlobalMessage("Meteor strike unlocked!");
@@ -1835,6 +1867,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statsBar.classList.remove('hidden');
         mainContent.classList.remove('hidden');
         updateUI();
+        renderWavePreview();
         gameLoop();
     }
     buildTurretButton.addEventListener('click', () => toggleBuildMode('basic'));
